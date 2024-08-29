@@ -1,6 +1,14 @@
 let db;
 let currentChatId;
 
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+  if (message.action === "closeSidebar") {
+    window.close();
+    return false;
+  }
+  return false;
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
   const userInput = document.getElementById("user-input");

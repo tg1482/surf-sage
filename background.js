@@ -1,12 +1,17 @@
-chrome.action.onClicked.addListener((tab) => {
-  chrome.sidePanel.open({ tabId: tab.id });
-});
+// background.js
+let sidePanelOpen = false;
 
 chrome.commands.onCommand.addListener((command) => {
-  if (command === "_execute_action") {
+  if (command === "toggle_side_panel") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
-        chrome.sidePanel.open({ tabId: tabs[0].id });
+        if (sidePanelOpen) {
+          chrome.runtime.sendMessage({ action: "closeSidebar" });
+          sidePanelOpen = false;
+        } else {
+          chrome.sidePanel.open({ tabId: tabs[0].id });
+          sidePanelOpen = true;
+        }
       }
     });
   }
@@ -33,3 +38,11 @@ async function sendToGPT(message) {
   // This is a placeholder implementation
   return { response: "This is a placeholder response from GPT." };
 }
+
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("GPT Chat Assistant installed or updated");
+});
+
+chrome.commands.onCommand.addListener((command) => {
+  console.log("Command received:", command);
+});

@@ -11,15 +11,21 @@
     "default_title": "Open GPT Chat"
   },
   "commands": {
-    "_execute_action": {
+    "toggle_side_panel": {
       "suggested_key": {
-        "default": "Ctrl+L",
-        "mac": "Command+L"
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
       },
-      "description": "Open GPT Chat"
+      "description": "Toggle GPT Chat Side Panel"
     }
   },
   "side_panel": {
     "default_path": "sidepanel.html"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
 }
