@@ -4,9 +4,8 @@ let currentChatId;
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
   if (message.action === "closeSidebar") {
     window.close();
-    return false;
+    return true;
   }
-  return false;
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,16 +16,26 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatHistory = document.getElementById("chat-history");
 
   // Initialize IndexedDB
-  const request = indexedDB.open("ChatDatabase", 1);
+  const request = indexedDB.open("ChatDatabase", 2); // Increment version to trigger onupgradeneeded
   request.onerror = (event) => console.error("IndexedDB error:", event.target.error);
   request.onsuccess = (event) => {
     db = event.target.result;
     loadChatHistory();
+    loadMostRecentChat();
   };
   request.onupgradeneeded = (event) => {
     const db = event.target.result;
-    const objectStore = db.createObjectStore("chats", { keyPath: "id", autoIncrement: true });
-    objectStore.createIndex("timestamp", "timestamp", { unique: false });
+    if (!db.objectStoreNames.contains("chats")) {
+      const objectStore = db.createObjectStore("chats", { keyPath: "id", autoIncrement: true });
+      objectStore.createIndex("timestamp", "timestamp", { unique: false });
+      objectStore.createIndex("chatId", "chatId", { unique: false });
+    } else {
+      const transaction = event.target.transaction;
+      const objectStore = transaction.objectStore("chats");
+      if (!objectStore.indexNames.contains("chatId")) {
+        objectStore.createIndex("chatId", "chatId", { unique: false });
+      }
+    }
   };
 
   sendButton.addEventListener("click", sendMessage);
@@ -42,11 +51,16 @@ document.addEventListener("DOMContentLoaded", () => {
   function sendMessage() {
     const message = userInput.value.trim();
     if (message) {
+      if (!currentChatId) {
+        createNewChat();
+      }
       addMessageToChat("user", message);
       saveMessageToDb("user", message);
       chrome.runtime.sendMessage({ action: "sendToGPT", message: message }, (response) => {
-        addMessageToChat("ai", response.response);
-        saveMessageToDb("ai", response.response);
+        if (response) {
+          addMessageToChat("ai", response.response);
+          saveMessageToDb("ai", response.response);
+        }
       });
       userInput.value = "";
     }
@@ -61,6 +75,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveMessageToDb(sender, message) {
+    if (!db) {
+      console.error("Database not initialized");
+      return;
+    }
     const transaction = db.transaction(["chats"], "readwrite");
     const store = transaction.objectStore("chats");
     const chatMessage = {
@@ -69,10 +87,16 @@ document.addEventListener("DOMContentLoaded", () => {
       message: message,
       timestamp: new Date().getTime(),
     };
-    store.add(chatMessage);
+    store.add(chatMessage).onsuccess = () => {
+      loadChatHistory();
+    };
   }
 
   function loadChatHistory() {
+    if (!db) {
+      console.error("Database not initialized");
+      return;
+    }
     const transaction = db.transaction(["chats"], "readonly");
     const store = transaction.objectStore("chats");
     const index = store.index("timestamp");
@@ -84,12 +108,14 @@ document.addEventListener("DOMContentLoaded", () => {
     request.onsuccess = (event) => {
       const cursor = event.target.result;
       if (cursor) {
-        if (!chats.has(cursor.value.chatId)) {
-          chats.set(cursor.value.chatId, cursor.value);
+        const chatId = cursor.value.chatId;
+        if (!chats.has(chatId)) {
+          chats.set(chatId, cursor.value);
           const chatItem = document.createElement("div");
           chatItem.classList.add("chat-item");
-          chatItem.textContent = `Chat ${new Date(cursor.value.timestamp).toLocaleString()}`;
-          chatItem.addEventListener("click", () => loadChat(cursor.value.chatId));
+          chatItem.dataset.chatId = chatId;
+          chatItem.textContent = `${new Date(cursor.value.timestamp).toLocaleString()} - ${cursor.value.message.substring(0, 30)}...`;
+          chatItem.addEventListener("click", () => loadChat(chatId));
           chatHistory.appendChild(chatItem);
         }
         cursor.continue();
@@ -98,34 +124,76 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function loadChat(chatId) {
+    console.log("Loading chat:", chatId); // Debug log
+    if (!db) {
+      console.error("Database not initialized");
+      return;
+    }
     currentChatId = chatId;
     chatMessages.innerHTML = "";
     const transaction = db.transaction(["chats"], "readonly");
     const store = transaction.objectStore("chats");
-    const request = store.getAll(IDBKeyRange.only(chatId));
+    const index = store.index("chatId");
+    const request = index.getAll(chatId);
 
     request.onsuccess = (event) => {
       const messages = event.target.result;
+      console.log("Messages for chat:", messages); // Debug log
+      if (messages.length === 0) {
+        console.log("No messages found for chatId:", chatId); // Debug log
+      }
       messages.sort((a, b) => a.timestamp - b.timestamp);
       messages.forEach((msg) => addMessageToChat(msg.sender, msg.message));
     };
+
+    // Update the visual feedback for the selected chat
+    updateSelectedChat(chatId);
+  }
+
+  function updateSelectedChat(chatId) {
+    const chatItems = document.querySelectorAll(".chat-item");
+    chatItems.forEach((item) => {
+      if (item.dataset.chatId == chatId) {
+        item.classList.add("selected");
+      } else {
+        item.classList.remove("selected");
+      }
+    });
   }
 
   function createNewChat() {
-    currentChatId = Date.now();
+    currentChatId = Date.now().toString();
     chatMessages.innerHTML = "";
     userInput.value = "";
     userInput.focus();
-    loadChatHistory();
+    loadChatHistory(); // Refresh the chat history to include the new chat
+    updateSelectedChat(currentChatId);
   }
 
-  // Get selected text when the panel opens
+  function loadMostRecentChat() {
+    if (!db) {
+      console.error("Database not initialized");
+      return;
+    }
+    const transaction = db.transaction(["chats"], "readonly");
+    const store = transaction.objectStore("chats");
+    const index = store.index("timestamp");
+    const request = index.openCursor(null, "prev");
+
+    request.onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        loadChat(cursor.value.chatId);
+      } else {
+        // No existing chats, create a new one
+        createNewChat();
+      }
+    };
+  }
+
   chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
     if (response && response.selectedText) {
       userInput.value = response.selectedText;
     }
   });
-
-  // Create a new chat when the panel is first opened
-  createNewChat();
 });

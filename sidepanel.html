@@ -39,13 +39,15 @@
         gap: 10px;
       }
       .chat-item {
-        padding: 10px;
-        background-color: #34495e;
-        border-radius: 5px;
         cursor: pointer;
+        padding: 10px;
+        border-bottom: 1px solid #34495e;
       }
       .chat-item:hover {
-        background-color: #4a6785;
+        background-color: #34495e;
+      }
+      .chat-item.selected {
+        background-color: #2980b9;
       }
       #chat-container {
         flex: 1;
