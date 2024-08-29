@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "GPT Chat Assistant",
+  "version": "1.0",
+  "description": "Ask questions to GPT from your browser",
+  "permissions": ["activeTab", "storage", "sidePanel"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open GPT Chat"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+L",
+        "mac": "Command+L"
+      },
+      "description": "Open GPT Chat"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
