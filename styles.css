@@ -403,7 +403,32 @@ body {
   background-color: #d0d0d0;
 }
 
-#local-model-group {
+/* Add these new styles */
+.provider-tabs {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.provider-tab {
+  flex: 1;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.provider-tab:hover {
+  background-color: #e0e0e0;
+}
+
+.provider-tab.active {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.input-group {
   display: flex;
   gap: 10px;
 }
@@ -426,6 +451,12 @@ body {
   background-color: #3a7bc8;
 }
 
-#add-local-model:active {
-  background-color: #2a6db8;
+/* Remove these styles as they're no longer needed */
+#local-model-group {
+  display: flex;
+  gap: 10px;
+}
+
+#local-model-input {
+  flex-grow: 1;
 }

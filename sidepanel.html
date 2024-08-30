@@ -27,13 +27,10 @@
     <div id="settings-modal" class="modal">
       <div class="modal-content">
         <h2>Chat Assistant Settings</h2>
-        <div class="form-group">
-          <label for="provider-select">Provider:</label>
-          <select id="provider-select">
-            <option value="openai">OpenAI</option>
-            <option value="anthropic">Anthropic</option>
-            <option value="local">Local</option>
-          </select>
+        <div class="provider-tabs">
+          <button class="provider-tab active" data-provider="openai">OpenAI</button>
+          <button class="provider-tab" data-provider="anthropic">Anthropic</button>
+          <button class="provider-tab" data-provider="local">Local</button>
         </div>
         <div class="form-group" id="model-group">
           <label for="settings-model-select">Model:</label>
@@ -41,8 +38,10 @@
         </div>
         <div class="form-group" id="local-model-group" style="display: none">
           <label for="local-model-input">Add Local Model:</label>
-          <input type="text" id="local-model-input" placeholder="Enter model name" />
-          <button id="add-local-model">Add</button>
+          <div class="input-group">
+            <input type="text" id="local-model-input" placeholder="Enter model name" />
+            <button id="add-local-model">Add</button>
+          </div>
         </div>
         <div class="form-group" id="api-key-group">
           <label for="api-key-input">API Key:</label>

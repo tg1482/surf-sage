@@ -4,12 +4,7 @@ import { initializeSettings } from "./settings.js";
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key === "m") {
     e.preventDefault();
-    const modelSelect = document.getElementById("model-select");
-    const options = modelSelect.options;
-    const currentIndex = modelSelect.selectedIndex;
-    const nextIndex = (currentIndex + 1) % options.length;
-    modelSelect.selectedIndex = nextIndex;
-    chrome.storage.local.set({ model: options[nextIndex].value });
+    toggleModel();
   }
 });
 
@@ -21,11 +16,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatHistory = document.getElementById("chat-history");
   const modelSelect = document.getElementById("model-select");
 
-  const { updateConfiguredModels } = initializeSettings();
+  const { updateConfiguredModels, openSettings } = initializeSettings();
 
   modelSelect.addEventListener("change", function () {
     chrome.storage.local.set({ model: this.value });
   });
+
+  // Function to toggle model
+  async function toggleModel() {
+    const modelsAvailable = await updateConfiguredModels();
+    if (!modelsAvailable) {
+      openSettings();
+      return;
+    }
+    const options = modelSelect.options;
+    const currentIndex = modelSelect.selectedIndex;
+    const nextIndex = (currentIndex + 1) % options.length;
+    modelSelect.selectedIndex = nextIndex;
+    chrome.storage.local.set({ model: options[nextIndex].value });
+  }
 
   // Listen for storage changes
   chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -87,6 +96,11 @@ document.addEventListener("DOMContentLoaded", () => {
   newChatButton.addEventListener("click", createNewChat);
 
   async function sendMessage() {
+    const modelsAvailable = await updateConfiguredModels();
+    if (!modelsAvailable) {
+      openSettings();
+      return;
+    }
     const message = userInput.innerHTML.trim();
     if (message) {
       if (!currentChatId) {
