@@ -80,51 +80,148 @@ chrome.runtime.onConnect.addListener(function (port) {
 });
 
 async function sendToGPT(message) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["provider", "model", "apiKey", "localUrl"], async function (result) {
-      const provider = result.provider || "openai";
-      const model = result.model || "gpt-4o-mini";
-      const apiKey = result.apiKey;
-      const localUrl = result.localUrl;
+  chrome.storage.local.get(["provider", "model", "apiKey", "localUrl"], async function (result) {
+    const provider = result.provider || "openai";
+    const model = result.model || "gpt-4o-mini";
+    const apiKey = result.apiKey;
+    const localUrl = result.localUrl;
 
-      if (provider === "local") {
-        try {
-          const response = await fetch(localUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: model,
-              messages: [{ role: "user", content: message }],
-            }),
-          });
-          const data = await response.json();
-          resolve(data.response);
-        } catch (error) {
-          reject(error);
-        }
-      } else {
-        const apiUrl = provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.anthropic.com/v1/complete";
+    let streamHandler;
+    if (provider === "local") {
+      streamHandler = handleLocalStream;
+    } else if (provider === "anthropic") {
+      streamHandler = handleAnthropicStream;
+    } else {
+      streamHandler = handleOpenAIStream;
+    }
 
-        try {
-          const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: [{ role: "user", content: message }],
-            }),
-          });
-          const data = await response.json();
-          resolve(data.choices[0].message.content);
-        } catch (error) {
-          reject(error);
+    try {
+      await streamHandler(message, model, apiKey, localUrl);
+      chrome.runtime.sendMessage({ action: "streamEnd" });
+    } catch (error) {
+      chrome.runtime.sendMessage({ action: "error", error: error.message });
+    }
+  });
+}
+
+async function handleLocalStream(message, model, _, localUrl) {
+  const response = await fetch(localUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: model,
+      messages: [{ role: "user", content: message }],
+    }),
+  });
+
+  const reader = response.body.getReader();
+  let fullResponse = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = new TextDecoder().decode(value);
+    const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+
+    for (const line of lines) {
+      const parsedLine = JSON.parse(line);
+      if (!parsedLine.done) {
+        const content = parsedLine.message.content;
+        fullResponse += content;
+        chrome.runtime.sendMessage({ action: "streamResponse", content });
+      }
+    }
+  }
+
+  return fullResponse;
+}
+
+async function handleAnthropicStream(message, model, apiKey) {
+  const response = await fetch("https://api.anthropic.com/v1/complete", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [{ role: "user", content: message }],
+      stream: true,
+    }),
+  });
+
+  const reader = response.body.getReader();
+  let fullResponse = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = new TextDecoder().decode(value);
+    const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const data = JSON.parse(line.slice(6));
+        if (data.delta && data.delta.text) {
+          fullResponse += data.delta.text;
+          chrome.runtime.sendMessage({ action: "streamResponse", content: data.delta.text });
         }
       }
-    });
+    }
+  }
+
+  return fullResponse;
+}
+
+async function handleOpenAIStream(message, model, apiKey) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: [{ role: "user", content: message }],
+      stream: true,
+    }),
   });
+
+  const reader = response.body.getReader();
+  let fullResponse = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = new TextDecoder().decode(value);
+    const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        if (line.includes("[DONE]")) {
+          // Stream has ended
+          chrome.runtime.sendMessage({ action: "streamEnd" });
+          return fullResponse;
+        }
+        try {
+          const data = JSON.parse(line.slice(6));
+          if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+            const content = data.choices[0].delta.content;
+            fullResponse += content;
+            chrome.runtime.sendMessage({ action: "streamResponse", content });
+          }
+        } catch (error) {
+          console.error("Error parsing JSON:", error);
+        }
+      }
+    }
+  }
+
+  chrome.runtime.sendMessage({ action: "streamEnd" });
+  return fullResponse;
 }
 
 chrome.runtime.onInstalled.addListener(() => {

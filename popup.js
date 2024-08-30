@@ -17,6 +17,21 @@ document.addEventListener("DOMContentLoaded", function () {
     local: ["llama3.1"],
   };
 
+  const defaults = {
+    openai: {
+      model: "gpt-4o-mini",
+      apiKey: "",
+    },
+    anthropic: {
+      model: "claude-3.5-sonnet",
+      apiKey: "",
+    },
+    local: {
+      model: "llama3.1",
+      localUrl: "http://localhost:11434/api/chat",
+    },
+  };
+
   function loadModels() {
     const provider = providerSelect.value;
     modelSelect.innerHTML = "";
@@ -86,22 +101,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Load saved preferences
   chrome.storage.local.get(["provider", "model", "apiKey", "localUrl", "localModels"], function (result) {
-    if (result.provider) {
-      providerSelect.value = result.provider;
-      toggleInputs(result.provider);
-    }
+    const provider = result.provider || "openai";
+    providerSelect.value = provider;
+    toggleInputs(provider);
+
     if (result.localModels) {
       models.local = result.localModels;
     }
     loadModels();
-    if (result.model) {
-      modelSelect.value = result.model;
-    }
-    if (result.apiKey) {
-      apiKeyInput.value = result.apiKey;
-    }
-    if (result.localUrl) {
-      localUrlInput.value = result.localUrl;
-    }
+
+    modelSelect.value = result.model || defaults[provider].model;
+    apiKeyInput.value = result.apiKey || defaults[provider].apiKey || "";
+    localUrlInput.value = result.localUrl || defaults.local.localUrl;
   });
 });

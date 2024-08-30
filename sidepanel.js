@@ -78,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function proceedWithSendMessage(message) {
     console.log("Sending message:", message);
     const timestamp = Date.now();
+    let chatData;
 
     getCurrentTabUrl()
       .then((currentUrl) => {
@@ -91,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const getRequest = store.get(currentChatId);
 
           getRequest.onsuccess = (event) => {
-            let chatData = event.target.result || {
+            chatData = event.target.result || {
               chatId: currentChatId,
               timestamp: Date.now(),
               messages: [],
@@ -135,13 +136,36 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Selected text:", selectedText);
 
         const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}\n\nSelected text: ${selectedText}`;
-        return sendToGPT(fullMessage);
+
+        // Create a placeholder for the AI response
+        const aiTimestamp = Date.now();
+        const aiMessageElement = addMessageToChat("ai", "", aiTimestamp);
+
+        // Add AI message to chatData
+        chatData.messages.push({
+          type: "message",
+          sender: "ai",
+          message: "",
+          timestamp: aiTimestamp,
+        });
+
+        return sendToGPT(fullMessage, aiMessageElement);
       })
       .then((response) => {
         console.log("GPT response received:", response);
-        const aiTimestamp = Date.now();
-        addMessageToChat("ai", response, aiTimestamp);
-        return saveMessageToDb("ai", response);
+
+        // Update the AI message in chatData
+        const aiMessage = chatData.messages[chatData.messages.length - 1];
+        aiMessage.message = response;
+
+        // Save the updated chat data to the database
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(["chats"], "readwrite");
+          const store = transaction.objectStore("chats");
+          const putRequest = store.put(chatData);
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = (error) => reject(error);
+        });
       })
       .then(() => {
         console.log("AI response saved to DB");
@@ -177,20 +201,42 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function sendToGPT(message) {
+  function sendToGPT(message, aiMessageElement) {
     return new Promise((resolve, reject) => {
+      let fullResponse = "";
+
       chrome.runtime.sendMessage({ action: "sendToGPT", message: message }, (response) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
-        } else if (response && response.response) {
-          resolve(response.response);
-        } else {
-          reject(new Error("Invalid response from GPT"));
         }
       });
+
+      // Set up a listener for the streamed responses
+      const messageListener = (msg) => {
+        if (msg.action === "streamResponse") {
+          fullResponse += msg.content;
+          handleStreamResponse(msg.content, aiMessageElement);
+        } else if (msg.action === "streamEnd") {
+          chrome.runtime.onMessage.removeListener(messageListener);
+          resolve(fullResponse);
+        } else if (msg.action === "error") {
+          chrome.runtime.onMessage.removeListener(messageListener);
+          reject(new Error(msg.error));
+        }
+      };
+
+      chrome.runtime.onMessage.addListener(messageListener);
     });
   }
 
+  // Update the handleStreamResponse function
+  function handleStreamResponse(content, aiMessageElement) {
+    const messageContent = aiMessageElement.querySelector(".message-content");
+    messageContent.textContent += content;
+    aiMessageElement.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+
+  // Update the addMessageToChat function to return the message element
   function addMessageToChat(sender, message, timestamp) {
     const messageElement = document.createElement("div");
     messageElement.classList.add("message", sender);
@@ -222,6 +268,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    return messageElement;
   }
 
   // Replace the chrome.tabs.query calls with this function
@@ -291,80 +339,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error in createNewChat:", error);
       throw error;
     }
-  }
-
-  // Update the saveMessageToDb function
-  function saveMessageToDb(sender, message) {
-    return new Promise((resolve, reject) => {
-      if (!db) {
-        reject("Database not initialized");
-        return;
-      }
-
-      getCurrentTabUrl()
-        .then((currentUrl) => {
-          if (!currentUrl) {
-            console.error("No URL found for the active tab");
-            reject("No URL found for the active tab");
-            return;
-          }
-
-          console.log("Saving message with URL:", currentUrl);
-
-          const transaction = db.transaction(["chats"], "readwrite");
-          const store = transaction.objectStore("chats");
-
-          const getRequest = store.get(currentChatId);
-          getRequest.onsuccess = (event) => {
-            let chatData = event.target.result || {
-              chatId: currentChatId,
-              timestamp: Date.now(),
-              messages: [],
-            };
-
-            const lastUrlMessage = chatData.messages.findLast((msg) => msg.type === "url");
-            const urlChanged = !lastUrlMessage || currentUrl !== lastUrlMessage.url;
-
-            if (urlChanged) {
-              const urlTimestamp = Date.now();
-              const urlMessage = {
-                type: "url",
-                url: currentUrl,
-                timestamp: urlTimestamp,
-              };
-              chatData.messages.push(urlMessage);
-            }
-
-            const messageTimestamp = Date.now();
-            const newMessage = {
-              type: "message",
-              sender: sender,
-              message: message,
-              timestamp: messageTimestamp,
-            };
-            chatData.messages.push(newMessage);
-
-            const putRequest = store.put(chatData);
-            putRequest.onsuccess = () => {
-              console.log("Chat data saved successfully");
-              loadChatHistory();
-              resolve();
-            };
-            putRequest.onerror = (error) => {
-              console.error("Error saving chat data:", error);
-              reject(error);
-            };
-          };
-          getRequest.onerror = (error) => {
-            console.error("Error retrieving chat data:", error);
-            reject(error);
-          };
-        })
-        .catch((error) => {
-          console.error("Error getting current tab URL:", error);
-          reject(error);
-        });
-    });
   }
 
   function loadChatHistory() {
