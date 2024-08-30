@@ -48,7 +48,9 @@ chrome.commands.onCommand.addListener((command) => {
             });
           } else {
             // If panel is open but no text selected, close the panel
-            chrome.sidePanel.close();
+            chrome.runtime.sendMessage({
+              action: "closeSidebar",
+            });
             sidePanelOpen = false;
           }
         } else {
@@ -57,6 +59,19 @@ chrome.commands.onCommand.addListener((command) => {
           sidePanelOpen = true;
         }
       }
+    });
+  }
+});
+
+chrome.runtime.onConnect.addListener(function (port) {
+  if (port.name === "mySidepanel") {
+    console.log("Side panel opened");
+    sidePanelOpen = true;
+
+    port.onDisconnect.addListener(() => {
+      console.log("Side panel closed");
+      sidePanelOpen = false;
+      currentSelectedText = ""; // Clear the selected text when panel is closed
     });
   }
 });

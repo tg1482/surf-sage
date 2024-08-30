@@ -87,7 +87,40 @@
         padding: 10px;
         border: 1px solid #bdc3c7;
         border-radius: 5px;
-        resize: none;
+        resize: vertical;
+        min-height: 100px;
+        font-family: Arial, sans-serif;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+      }
+      #user-input:focus {
+        outline: none;
+        border-color: #3498db;
+      }
+      #user-input::placeholder {
+        color: #bdc3c7;
+      }
+      /* Style for the quote */
+      #user-input {
+        line-height: 1.5;
+      }
+      #user-input > :first-child {
+        margin-top: 0;
+      }
+      #user-input > :last-child {
+        margin-bottom: 0;
+      }
+      #user-input blockquote {
+        border-left: 3px solid #3498db;
+        margin: 0 0 10px 0;
+        padding: 5px 10px;
+        color: #34495e;
+        background-color: #f8f9fa;
+        font-style: italic;
+      }
+      #user-input p {
+        margin: 0;
+        min-height: 1em;
       }
       #send-button {
         margin-top: 10px;
@@ -101,6 +134,23 @@
       #send-button:hover {
         background-color: #27ae60;
       }
+      /* Improved blockquote styles */
+      .message blockquote {
+        border-left: 3px solid #3498db;
+        margin: 0 0 10px 0;
+        padding: 10px;
+        color: #e4dada;
+        font-style: italic;
+      }
+      .message.user blockquote {
+        border-left-color: #e4dada;
+      }
+      .message.ai blockquote {
+        border-left-color: #2ecc71;
+      }
+      .message p {
+        margin: 0 0 10px 0;
+      }
     </style>
   </head>
   <body>
@@ -111,7 +161,7 @@
     <div id="chat-container">
       <div id="chat-messages"></div>
       <div id="input-area">
-        <textarea id="user-input" rows="3" placeholder="Type your message..."></textarea>
+        <div id="user-input" contenteditable="true" placeholder="Type your message..."></div>
         <button id="send-button">Send</button>
       </div>
     </div>

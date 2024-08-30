@@ -1,3 +1,5 @@
+const port = chrome.runtime.connect({ name: "mySidepanel" });
+
 let db;
 let currentChatId;
 
@@ -41,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   sendButton.addEventListener("click", sendMessage);
-  userInput.addEventListener("keypress", (e) => {
+  userInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -51,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
   newChatButton.addEventListener("click", createNewChat);
 
   function sendMessage() {
-    const message = userInput.value.trim();
+    const message = userInput.innerHTML.trim();
     if (message) {
       if (!currentChatId) {
         createNewChat();
@@ -76,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
           addMessageToChat("system", "An error occurred. Please try again.");
         });
 
-      userInput.value = "";
+      userInput.innerHTML = "";
     }
   }
 
@@ -120,7 +122,26 @@ document.addEventListener("DOMContentLoaded", () => {
   function addMessageToChat(sender, message) {
     const messageElement = document.createElement("div");
     messageElement.classList.add("message", sender);
-    messageElement.textContent = message;
+
+    // Check if the message contains a blockquote
+    if (message.includes("<blockquote>")) {
+      // If it does, use innerHTML to preserve the HTML structure
+      const parts = message.split("</blockquote>");
+      messageElement.innerHTML = parts[0] + "</blockquote>";
+      if (parts[1] && parts[1].trim()) {
+        messageElement.innerHTML += `<p>${parts[1].trim()}</p>`;
+      }
+    } else {
+      // If it doesn't, use textContent for safe text insertion
+      messageElement.textContent = message;
+    }
+
+    // Ensure links are clickable
+    messageElement.querySelectorAll("a").forEach((link) => {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    });
+
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
@@ -242,11 +263,59 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  function setInputAsQuote(text) {
+    if (text && text.trim()) {
+      // Strip HTML tags and decode HTML entities
+      const cleanText = text
+        .trim()
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&");
+
+      // Replace newlines with <br> tags
+      const formattedText = cleanText.replace(/\n/g, "<br>");
+
+      userInput.innerHTML = `<blockquote>${formattedText}</blockquote><p><br></p>`;
+      userInput.focus();
+
+      // Move cursor to the end of the userInput
+      const length = userInput.innerText.length;
+      userInput.setSelectionRange(length, length);
+    }
+  }
+
+  function handleSelectedText(selectedText) {
+    if (selectedText && selectedText.trim()) {
+      if (!currentChatId) {
+        createNewChat();
+      }
+      setInputAsQuote(selectedText);
+      userInput.focus(); // Add this line to focus the input box
+    }
+  }
+
+  // Set up a message listener for content script messages
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "updateSelectedText") {
+      handleSelectedText(message.selectedText);
+    }
+  });
+
+  // Get selected text when the side panel is opened
   chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
     if (response && response.selectedText) {
-      userInput.value = response.selectedText;
+      handleSelectedText(response.selectedText);
     } else if (response && response.error) {
       console.error("Error getting selected text:", response.error);
+    }
+  });
+
+  // Request the current selected text when the panel opens
+  chrome.runtime.sendMessage({ action: "getCurrentSelectedText" }, (response) => {
+    if (response && response.selectedText) {
+      handleSelectedText(response.selectedText);
     }
   });
 
@@ -256,19 +325,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!currentChatId) {
         createNewChat();
       }
-      userInput.value = event.data.text;
+      setInputAsQuote(event.data.text);
     }
   });
 
   // Get selected text when the side panel is opened
   chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
     if (response && response.selectedText) {
-      if (!currentChatId) {
-        createNewChat();
-      }
-      // addMessageToChat("user", "Selected text: " + response.selectedText);
-      // saveMessageToDb("user", "Selected text: " + response.selectedText);
-      userInput.value = response.selectedText;
+      handleSelectedText(response.selectedText);
     } else if (response && response.error) {
       console.error("Error getting selected text:", response.error);
     }
@@ -277,7 +341,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // Request the current selected text when the panel opens
   chrome.runtime.sendMessage({ action: "getCurrentSelectedText" }, (response) => {
     if (response && response.selectedText) {
-      userInput.value = response.selectedText;
+      handleSelectedText(response.selectedText);
     }
   });
+
+  // Add this function to handle cleanup when the panel is closed
+  function handlePanelClose() {
+    // Perform any necessary cleanup here
+    console.log("Side panel is being closed");
+    // For example, you might want to save the current state or clear some data
+  }
+
+  // Add an event listener for when the window is about to unload
+  window.addEventListener("beforeunload", handlePanelClose);
 });

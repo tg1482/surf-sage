@@ -42,13 +42,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+function cleanSelectedText(text) {
+  return text
+    .trim()
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 function checkSelection() {
   const selectedText = window.getSelection().toString().trim();
   if (selectedText !== previousSelectedText) {
     previousSelectedText = selectedText;
+    const cleanedText = cleanSelectedText(selectedText);
     chrome.runtime.sendMessage({
       action: "updateSelectedText",
-      selectedText: selectedText,
+      selectedText: cleanedText,
     });
   }
 }
