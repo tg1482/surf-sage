@@ -13,8 +13,8 @@
   "commands": {
     "toggle_side_panel": {
       "suggested_key": {
-        "default": "Ctrl+Shift+L",
-        "mac": "Command+Shift+L"
+        "default": "Alt+L",
+        "mac": "Alt+L"
       },
       "description": "Toggle GPT Chat Side Panel"
     }
