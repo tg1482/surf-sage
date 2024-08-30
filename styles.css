@@ -14,6 +14,7 @@ body {
   padding: 20px;
   overflow-y: auto;
 }
+
 #new-chat-button {
   width: 100%;
   padding: 10px;
@@ -24,45 +25,58 @@ body {
   cursor: pointer;
   margin-bottom: 20px;
 }
+
 #new-chat-button:hover {
   background-color: #2980b9;
 }
+
 #chat-history {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
 .chat-item {
   padding: 10px;
   border-bottom: 1px solid #34495e;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
+
 .chat-item:hover {
   background-color: #34495e;
 }
+
 .chat-item > div {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .chat-item > div:first-child {
   font-size: 0.8em;
   color: #bdc3c7;
 }
+
 .chat-item > div:nth-child(2) {
   font-weight: bold;
   color: #3498db;
 }
+
 .chat-item > div:last-child {
   font-size: 0.9em;
   color: #ecf0f1;
 }
+
 #chat-container {
   flex: 1;
   display: flex;
   flex-direction: column;
   background-color: white;
 }
+
 #chat-messages {
   flex: 1;
   padding: 20px;
@@ -71,25 +85,30 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+
 .message {
   max-width: 70%;
   padding: 10px;
   border-radius: 10px;
 }
+
 .user {
   align-self: flex-end;
   background-color: #3498db;
   color: white;
 }
+
 .ai {
   align-self: flex-start;
   background-color: #ecf0f1;
   color: #2c3e50;
 }
+
 #input-area {
   padding: 20px;
   border-top: 1px solid #ecf0f1;
 }
+
 #user-input {
   width: 100%;
   padding: 10px;
@@ -100,24 +119,26 @@ body {
   font-family: Arial, sans-serif;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  line-height: 1.5;
 }
+
 #user-input:focus {
   outline: none;
   border-color: #3498db;
 }
+
 #user-input::placeholder {
   color: #bdc3c7;
 }
-/* Style for the quote */
-#user-input {
-  line-height: 1.5;
-}
+
 #user-input > :first-child {
   margin-top: 0;
 }
+
 #user-input > :last-child {
   margin-bottom: 0;
 }
+
 #user-input blockquote {
   border-left: 3px solid #3498db;
   margin: 0 0 10px 0;
@@ -126,10 +147,12 @@ body {
   background-color: #f8f9fa;
   font-style: italic;
 }
+
 #user-input p {
   margin: 0;
   min-height: 1em;
 }
+
 #send-button {
   margin-top: 10px;
   padding: 10px 20px;
@@ -139,33 +162,20 @@ body {
   border-radius: 5px;
   cursor: pointer;
 }
+
 #send-button:hover {
   background-color: #27ae60;
 }
-/* Improved blockquote styles */
-.message blockquote {
-  border-left: 3px solid #3498db;
-  margin: 0 0 10px 0;
-  padding: 10px;
-  color: #e4dada;
-  font-style: italic;
-}
-.message.user blockquote {
-  border-left-color: #e4dada;
-}
-.message.ai blockquote {
-  border-left-color: #2ecc71;
-}
-.message p {
-  margin: 0 0 10px 0;
-}
-/* New styles for chat URL and history */
+
 .chat-url {
   padding: 10px;
   background-color: #f8f9fa;
   border-bottom: 1px solid #e9ecef;
   font-size: 0.9em;
   word-break: break-all;
+  text-align: center;
+  margin: 5px 0;
+  color: #7f8c8d;
 }
 
 .chat-url a {
@@ -177,39 +187,10 @@ body {
   text-decoration: underline;
 }
 
-.chat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.chat-item > div:first-child {
-  font-size: 0.8em;
-  color: #bdc3c7;
-}
-
-.chat-item > div:nth-child(2) {
-  font-weight: bold;
-}
-
-.chat-item > div:last-child {
-  font-size: 0.9em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .chat-date {
   text-align: center;
   margin: 10px 0;
   font-weight: bold;
-  color: #7f8c8d;
-}
-
-.chat-url {
-  text-align: center;
-  margin: 5px 0;
-  font-size: 0.9em;
   color: #7f8c8d;
 }
 
@@ -222,4 +203,66 @@ body {
 .message .chat-time {
   display: block;
   margin-bottom: 5px;
+}
+
+/* Markdown styles */
+.message-content {
+  line-height: 1.6;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.message-content p {
+  margin-bottom: 1em;
+}
+
+.message-content ul,
+.message-content ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.message-content blockquote {
+  border-left: 3px solid #3498db;
+  margin: 0 0 1em 0;
+  padding: 0.5em 1em;
+  background-color: rgba(52, 152, 219, 0.1);
+  font-style: italic;
+}
+
+.message-content pre {
+  background-color: #f8f9fa;
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.message-content code {
+  background-color: #f8f9fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.message-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.message.user .message-content blockquote {
+  border-left-color: #e4dada;
+  background-color: rgba(228, 218, 218, 0.1);
+}
+
+.message.ai .message-content blockquote {
+  border-left-color: #2ecc71;
+  background-color: rgba(46, 204, 113, 0.1);
 }

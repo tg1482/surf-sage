@@ -232,6 +232,7 @@ document.addEventListener("DOMContentLoaded", () => {
           handleStreamResponse(msg.content, aiMessageElement);
         } else if (msg.action === "streamEnd") {
           chrome.runtime.onMessage.removeListener(messageListener);
+          finalizeMessage(aiMessageElement, fullResponse);
           resolve(fullResponse);
         } else if (msg.action === "error") {
           chrome.runtime.onMessage.removeListener(messageListener);
@@ -243,14 +244,46 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Update the handleStreamResponse function
   function handleStreamResponse(content, aiMessageElement) {
+    if (!aiMessageElement) {
+      console.error("aiMessageElement is not defined");
+      return;
+    }
+
     const messageContent = aiMessageElement.querySelector(".message-content");
-    messageContent.textContent += content;
+    if (!messageContent) {
+      console.error("Could not find .message-content element");
+      return;
+    }
+
+    aiMessageElement.dataset.markdown = (aiMessageElement.dataset.markdown || "") + content;
+    messageContent.innerHTML = marked.parseInline(aiMessageElement.dataset.markdown);
     aiMessageElement.scrollIntoView({ behavior: "smooth", block: "end" });
   }
 
-  // Update the addMessageToChat function to return the message element
+  function finalizeMessage(aiMessageElement, fullResponse) {
+    if (!aiMessageElement) {
+      console.error("aiMessageElement is not defined");
+      return;
+    }
+
+    const messageContent = aiMessageElement.querySelector(".message-content");
+    if (!messageContent) {
+      console.error("Could not find .message-content element");
+      return;
+    }
+
+    messageContent.innerHTML = marked.parse(fullResponse);
+
+    // Add target="_blank" to all links
+    aiMessageElement.querySelectorAll("a").forEach((link) => {
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    });
+
+    aiMessageElement.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+
   function addMessageToChat(sender, message, timestamp) {
     const messageElement = document.createElement("div");
     messageElement.classList.add("message", sender);
@@ -267,14 +300,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const messageContent = document.createElement("div");
     messageContent.classList.add("message-content");
 
-    if (message.includes("<blockquote>")) {
-      messageContent.innerHTML = message;
-    } else {
-      messageContent.textContent = message;
-    }
+    // Parse and render markdown
+    messageContent.innerHTML = marked.parse(message);
 
     messageElement.appendChild(messageContent);
 
+    // Add target="_blank" to all links
     messageElement.querySelectorAll("a").forEach((link) => {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
