@@ -129,7 +129,26 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .then(() => {
         console.log("User message saved to DB");
-        return getPageContentAndSelection();
+        return new Promise((resolve, reject) => {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs[0]) {
+              chrome.tabs.sendMessage(tabs[0].id, { action: "getPageContentAndSelection" }, (response) => {
+                if (chrome.runtime.lastError) {
+                  console.error("Error in getPageContentAndSelection:", chrome.runtime.lastError);
+                  resolve({ pageContent: "", selectedText: "" });
+                } else if (response && response.pageContent !== undefined && response.selectedText !== undefined) {
+                  resolve(response);
+                } else {
+                  console.error("Invalid response in getPageContentAndSelection");
+                  resolve({ pageContent: "", selectedText: "" });
+                }
+              });
+            } else {
+              console.error("No active tab found");
+              resolve({ pageContent: "", selectedText: "" });
+            }
+          });
+        });
       })
       .then(({ pageContent, selectedText }) => {
         console.log("Current page content:", pageContent);
@@ -144,9 +163,16 @@ document.addEventListener("DOMContentLoaded", () => {
             content: msg.message,
           }));
 
+        const systemMessage = `You are a librarian who will be given some content from a webpage. Your job is to answer questions based on this content.${
+          selectedText ? " You will also be given a selected text from the webpage, which may be the focus of the question." : ""
+        }\n\nPage content: ${pageContent}${selectedText ? `\n\nSelected text: ${selectedText}` : ""}`;
+
         // Prepare the messages array
         const messages = [
-          { role: "system", content: `Page content: ${pageContent}\n\nSelected text: ${selectedText}` },
+          {
+            role: "system",
+            content: systemMessage,
+          },
           ...lastMessages,
           { role: "user", content: message },
         ];
@@ -190,29 +216,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
     userInput.innerHTML = "";
-  }
-
-  function getPageContentAndSelection() {
-    return new Promise((resolve, reject) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: "getPageContentAndSelection" }, (response) => {
-            if (chrome.runtime.lastError) {
-              console.error("Error in getPageContentAndSelection:", chrome.runtime.lastError);
-              resolve({ pageContent: "", selectedText: "" });
-            } else if (response && response.pageContent !== undefined && response.selectedText !== undefined) {
-              resolve(response);
-            } else {
-              console.error("Invalid response in getPageContentAndSelection");
-              resolve({ pageContent: "", selectedText: "" });
-            }
-          });
-        } else {
-          console.error("No active tab found");
-          resolve({ pageContent: "", selectedText: "" });
-        }
-      });
-    });
   }
 
   function sendToGPT(messages, aiMessageElement) {

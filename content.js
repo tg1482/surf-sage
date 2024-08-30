@@ -11,24 +11,25 @@ function getHighlightedText() {
 }
 
 function getPageContentAndSelection() {
-  const fullContent = document.body.innerText;
+  const fullContent = document.body.innerHTML;
   const selectedText = window.getSelection().toString();
 
-  let pageContent = fullContent;
+  // Convert HTML to Markdown
+  const turndownService = new TurndownService();
+  const markdownContent = turndownService.turndown(fullContent);
+  const markdownSelection = turndownService.turndown(selectedText);
 
-  if (fullContent.length > 2000) {
-    const selectionStart = fullContent.indexOf(selectedText);
-    if (selectionStart !== -1) {
-      const start = Math.max(0, selectionStart - 1000);
-      const end = Math.min(fullContent.length, selectionStart + selectedText.length + 1000);
-      pageContent = fullContent.substring(start, end);
-    } else {
-      // If no selection or selection not found, take the first 2000 characters
-      pageContent = fullContent.substring(0, 2000);
-    }
-  }
+  // Extend context to 10,000 words above and below the selection
+  const words = markdownContent.split(/\s+/);
+  const selectionStart = words.indexOf(markdownSelection.split(/\s+/)[0]);
+  const contextStart = Math.max(0, selectionStart - 10000);
+  const contextEnd = Math.min(words.length, selectionStart + markdownSelection.split(/\s+/).length + 10000);
+  const contextContent = words.slice(contextStart, contextEnd).join(" ");
 
-  return { pageContent, selectedText };
+  return {
+    pageContent: contextContent,
+    selectedText: markdownSelection,
+  };
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
