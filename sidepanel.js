@@ -135,7 +135,21 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("Current page content:", pageContent);
         console.log("Selected text:", selectedText);
 
-        const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}\n\nSelected text: ${selectedText}`;
+        // Get the last 10 messages for context
+        const lastMessages = chatData.messages
+          .filter((msg) => msg.type === "message")
+          .slice(-10)
+          .map((msg) => ({
+            role: msg.sender === "user" ? "user" : "assistant",
+            content: msg.message,
+          }));
+
+        // Prepare the messages array
+        const messages = [
+          { role: "system", content: `Page content: ${pageContent}\n\nSelected text: ${selectedText}` },
+          ...lastMessages,
+          { role: "user", content: message },
+        ];
 
         // Create a placeholder for the AI response
         const aiTimestamp = Date.now();
@@ -149,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
           timestamp: aiTimestamp,
         });
 
-        return sendToGPT(fullMessage, aiMessageElement);
+        return sendToGPT(messages, aiMessageElement);
       })
       .then((response) => {
         console.log("GPT response received:", response);
@@ -201,11 +215,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function sendToGPT(message, aiMessageElement) {
+  function sendToGPT(messages, aiMessageElement) {
     return new Promise((resolve, reject) => {
       let fullResponse = "";
 
-      chrome.runtime.sendMessage({ action: "sendToGPT", message: message }, (response) => {
+      chrome.runtime.sendMessage({ action: "sendToGPT", messages: messages }, (response) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         }

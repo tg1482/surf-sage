@@ -24,7 +24,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   } else if (request.action === "sendToGPT") {
-    sendToGPT(request.message)
+    sendToGPT(request.messages)
       .then((response) => {
         sendResponse({ response: response });
       })
@@ -79,39 +79,44 @@ chrome.runtime.onConnect.addListener(function (port) {
   }
 });
 
-async function sendToGPT(message) {
-  chrome.storage.local.get(["provider", "model", "apiKey", "localUrl"], async function (result) {
-    const provider = result.provider || "openai";
-    const model = result.model || "gpt-4o-mini";
-    const apiKey = result.apiKey;
-    const localUrl = result.localUrl;
+async function sendToGPT(messages) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["provider", "model", "apiKey", "localUrl"], async function (result) {
+      const provider = result.provider || "openai";
+      const model = result.model || "gpt-4o-mini";
+      const apiKey = result.apiKey;
+      const localUrl = result.localUrl;
 
-    let streamHandler;
-    if (provider === "local") {
-      streamHandler = handleLocalStream;
-    } else if (provider === "anthropic") {
-      streamHandler = handleAnthropicStream;
-    } else {
-      streamHandler = handleOpenAIStream;
-    }
+      let streamHandler;
+      if (provider === "local") {
+        streamHandler = handleLocalStream;
+      } else if (provider === "anthropic") {
+        streamHandler = handleAnthropicStream;
+      } else {
+        streamHandler = handleOpenAIStream;
+      }
 
-    try {
-      await streamHandler(message, model, apiKey, localUrl);
-      chrome.runtime.sendMessage({ action: "streamEnd" });
-    } catch (error) {
-      chrome.runtime.sendMessage({ action: "error", error: error.message });
-    }
+      try {
+        const response = await streamHandler(messages, model, apiKey, localUrl);
+        chrome.runtime.sendMessage({ action: "streamEnd" });
+        resolve(response);
+      } catch (error) {
+        chrome.runtime.sendMessage({ action: "error", error: error.message });
+        reject(error);
+      }
+    });
   });
 }
 
-async function handleLocalStream(message, model, _, localUrl) {
+// Update the stream handlers to accept the new messages format
+async function handleLocalStream(messages, model, _, localUrl) {
   try {
     const response = await fetch(localUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: model,
-        messages: [{ role: "user", content: message }],
+        messages: messages,
       }),
     });
 
@@ -158,8 +163,8 @@ async function handleLocalStream(message, model, _, localUrl) {
   }
 }
 
-async function handleAnthropicStream(message, model, apiKey) {
-  const response = await fetch("https://api.anthropic.com/v1/complete", {
+async function handleAnthropicStream(messages, model, apiKey) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -167,7 +172,7 @@ async function handleAnthropicStream(message, model, apiKey) {
     },
     body: JSON.stringify({
       model: model,
-      messages: [{ role: "user", content: message }],
+      messages: messages,
       stream: true,
     }),
   });
@@ -196,7 +201,7 @@ async function handleAnthropicStream(message, model, apiKey) {
   return fullResponse;
 }
 
-async function handleOpenAIStream(message, model, apiKey) {
+async function handleOpenAIStream(messages, model, apiKey) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -205,7 +210,7 @@ async function handleOpenAIStream(message, model, apiKey) {
     },
     body: JSON.stringify({
       model: model,
-      messages: [{ role: "user", content: message }],
+      messages: messages,
       stream: true,
     }),
   });
