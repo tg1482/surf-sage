@@ -281,8 +281,12 @@ document.addEventListener("DOMContentLoaded", () => {
       userInput.focus();
 
       // Move cursor to the end of the userInput
-      const length = userInput.innerText.length;
-      userInput.setSelectionRange(length, length);
+      const range = document.createRange();
+      const selection = window.getSelection();
+      range.selectNodeContents(userInput);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
   }
 
