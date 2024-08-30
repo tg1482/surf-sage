@@ -1,25 +1,17 @@
-const port = chrome.runtime.connect({ name: "mySidepanel" });
+import { initializeSettings } from "./settings.js";
 
-let db;
-let currentChatId;
-
-function initDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("ChatDatabase", 6);
-    request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
-    request.onsuccess = (event) => {
-      db = event.target.result;
-      resolve(db);
-    };
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains("chats")) {
-        const objectStore = db.createObjectStore("chats", { keyPath: "chatId" });
-        objectStore.createIndex("timestamp", "timestamp", { unique: false });
-      }
-    };
-  });
-}
+// Move this outside of DOMContentLoaded
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key === "m") {
+    e.preventDefault();
+    const modelSelect = document.getElementById("model-select");
+    const options = modelSelect.options;
+    const currentIndex = modelSelect.selectedIndex;
+    const nextIndex = (currentIndex + 1) % options.length;
+    modelSelect.selectedIndex = nextIndex;
+    chrome.storage.local.set({ model: options[nextIndex].value });
+  }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
@@ -27,6 +19,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const sendButton = document.getElementById("send-button");
   const newChatButton = document.getElementById("new-chat-button");
   const chatHistory = document.getElementById("chat-history");
+  const modelSelect = document.getElementById("model-select");
+
+  const { updateConfiguredModels } = initializeSettings();
+
+  modelSelect.addEventListener("change", function () {
+    chrome.storage.local.set({ model: this.value });
+  });
+
+  // Listen for storage changes
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === "local" && (changes.provider || changes.model || changes.apiKey || changes.localUrl || changes.localModels)) {
+      updateConfiguredModels();
+    }
+  });
+
+  let db;
+  let currentChatId;
+
+  function initDatabase() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("ChatDatabase", 6);
+      request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        resolve(db);
+      };
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("chats")) {
+          const objectStore = db.createObjectStore("chats", { keyPath: "chatId" });
+          objectStore.createIndex("timestamp", "timestamp", { unique: false });
+        }
+      };
+    });
+  }
 
   initDatabase()
     .then(() => {
@@ -45,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (message.action === "closeSidebar") {
       window.close();
     } else if (message.action === "updateInput") {
-      userInput.value = message.text;
+      userInput.innerHTML = message.text;
     }
   });
 

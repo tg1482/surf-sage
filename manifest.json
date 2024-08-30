@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GPT Chat Assistant",
-  "version": "1.0",
+  "version": "2.0",
   "description": "Ask questions to GPT from your browser",
   "permissions": ["activeTab", "storage", "sidePanel", "tabs"],
   "host_permissions": ["https://api.openai.com/*", "https://api.anthropic.com/*"],
@@ -9,14 +9,13 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "GPT Chat Assistant Settings"
+    "default_title": "GPT Chat Assistant"
   },
   "commands": {
     "toggle_side_panel": {
       "suggested_key": {
-        "default": "Alt+L",
-        "mac": "Alt+L"
+        "default": "Ctrl+L",
+        "mac": "MacCtrl+L"
       },
       "description": "Toggle GPT Chat Side Panel"
     }
