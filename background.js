@@ -1,28 +1,22 @@
 // background.js
 let sidePanelOpen = false;
+let currentSelectedText = "";
 
-chrome.commands.onCommand.addListener((command) => {
-  if (command === "toggle_side_panel") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        if (sidePanelOpen) {
-          chrome.runtime.sendMessage({ action: "closeSidebar" });
-          sidePanelOpen = false;
-        } else {
-          chrome.sidePanel.open({ tabId: tabs[0].id });
-          sidePanelOpen = true;
-        }
-      }
-    });
-  }
-});
-
+// Listen for selection changes from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "getSelectedText") {
+  if (request.action === "updateSelectedText") {
+    currentSelectedText = request.selectedText;
+  } else if (request.action === "getCurrentSelectedText") {
+    sendResponse({ selectedText: currentSelectedText });
+  } else if (request.action === "getSelectedText") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
         chrome.tabs.sendMessage(tabs[0].id, { action: "getSelectedText" }, (response) => {
-          sendResponse(response);
+          if (chrome.runtime.lastError) {
+            sendResponse({ error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse(response);
+          }
         });
       } else {
         sendResponse({ error: "No active tab found" });
@@ -30,11 +24,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   } else if (request.action === "sendToGPT") {
-    // Implement API call to OpenAI or other provider here
-    // This is a placeholder function
     sendToGPT(request.message)
       .then((response) => {
-        sendResponse(response);
+        sendResponse({ response: response });
       })
       .catch((error) => {
         sendResponse({ error: error.message });
@@ -43,10 +35,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle_side_panel") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        if (sidePanelOpen) {
+          if (currentSelectedText) {
+            // If panel is open and text is selected, send text to input
+            chrome.runtime.sendMessage({
+              action: "updateInput",
+              text: currentSelectedText,
+            });
+          } else {
+            // If panel is open but no text selected, close the panel
+            chrome.sidePanel.close();
+            sidePanelOpen = false;
+          }
+        } else {
+          // Open the side panel
+          chrome.sidePanel.open({ tabId: tabs[0].id });
+          sidePanelOpen = true;
+        }
+      }
+    });
+  }
+});
+
 async function sendToGPT(message) {
   // Implement your API call here
-  // This is a placeholder implementation
-  return { response: "This is a placeholder response from GPT." };
+  // This is a placeholder implementation with a delay to simulate an API call
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  return "This is a placeholder response from GPT.";
 }
 
 chrome.runtime.onInstalled.addListener(() => {

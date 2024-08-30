@@ -1,19 +1,21 @@
 let db;
 let currentChatId;
 
-chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-  if (message.action === "closeSidebar") {
-    window.close();
-    return true;
-  }
-});
-
 document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
   const userInput = document.getElementById("user-input");
   const sendButton = document.getElementById("send-button");
   const newChatButton = document.getElementById("new-chat-button");
   const chatHistory = document.getElementById("chat-history");
+
+  // Move the message listener inside DOMContentLoaded
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "closeSidebar") {
+      window.close();
+    } else if (message.action === "updateInput") {
+      userInput.value = message.text;
+    }
+  });
 
   // Initialize IndexedDB
   const request = indexedDB.open("ChatDatabase", 2);
@@ -57,40 +59,61 @@ document.addEventListener("DOMContentLoaded", () => {
       addMessageToChat("user", message);
       saveMessageToDb("user", message);
 
-      // Get page content before sending the message
-      getPageContent((pageContent) => {
-        console.log("Current page content:", pageContent);
+      getPageContentAndSelection()
+        .then(({ pageContent, selectedText }) => {
+          console.log("Current page content:", pageContent);
+          console.log("Selected text:", selectedText);
 
-        // Prepare the message with page content
-        const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}`;
-
-        chrome.runtime.sendMessage({ action: "sendToGPT", message: fullMessage }, (response) => {
-          if (response) {
-            addMessageToChat("ai", response.response);
-            saveMessageToDb("ai", response.response);
-          }
+          const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}\n\nSelected text: ${selectedText}`;
+          return sendToGPT(fullMessage);
+        })
+        .then((response) => {
+          addMessageToChat("ai", response);
+          saveMessageToDb("ai", response);
+        })
+        .catch((error) => {
+          console.error("Error in sendMessage:", error);
+          addMessageToChat("system", "An error occurred. Please try again.");
         });
-      });
 
       userInput.value = "";
     }
   }
 
-  function getPageContent(callback) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: "getPageContent" }, (response) => {
-          if (response && response.pageContent) {
-            callback(response.pageContent);
-          } else {
-            console.error("Error getting page content:", chrome.runtime.lastError);
-            callback("Unable to retrieve page content.");
-          }
-        });
-      } else {
-        console.error("No active tab found");
-        callback("No active tab found.");
-      }
+  function getPageContentAndSelection() {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, { action: "getPageContentAndSelection" }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error("Error in getPageContentAndSelection:", chrome.runtime.lastError);
+              resolve({ pageContent: "", selectedText: "" });
+            } else if (response && response.pageContent !== undefined && response.selectedText !== undefined) {
+              resolve(response);
+            } else {
+              console.error("Invalid response in getPageContentAndSelection");
+              resolve({ pageContent: "", selectedText: "" });
+            }
+          });
+        } else {
+          console.error("No active tab found");
+          resolve({ pageContent: "", selectedText: "" });
+        }
+      });
+    });
+  }
+
+  function sendToGPT(message) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ action: "sendToGPT", message: message }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else if (response && response.response) {
+          resolve(response.response);
+        } else {
+          reject(new Error("Invalid response from GPT"));
+        }
+      });
     });
   }
 
@@ -237,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // // Get selected text when the side panel is opened
+  // Get selected text when the side panel is opened
   chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
     if (response && response.selectedText) {
       if (!currentChatId) {
@@ -248,6 +271,13 @@ document.addEventListener("DOMContentLoaded", () => {
       userInput.value = response.selectedText;
     } else if (response && response.error) {
       console.error("Error getting selected text:", response.error);
+    }
+  });
+
+  // Request the current selected text when the panel opens
+  chrome.runtime.sendMessage({ action: "getCurrentSelectedText" }, (response) => {
+    if (response && response.selectedText) {
+      userInput.value = response.selectedText;
     }
   });
 });
