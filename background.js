@@ -105,36 +105,57 @@ async function sendToGPT(message) {
 }
 
 async function handleLocalStream(message, model, _, localUrl) {
-  const response = await fetch(localUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: model,
-      messages: [{ role: "user", content: message }],
-    }),
-  });
+  try {
+    const response = await fetch(localUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: "user", content: message }],
+      }),
+    });
 
-  const reader = response.body.getReader();
-  let fullResponse = "";
+    if (response.status === 403) {
+      const errorMessage =
+        "Received a 403 error from the local model. This is likely due to CORS restrictions. Please run Ollama with the following command:\n\n" +
+        "OLLAMA_ORIGINS=http://localhost,chrome-extension://* ollama serve\n\n" +
+        "This allows the extension to communicate with your local Ollama instance.";
+      chrome.runtime.sendMessage({ action: "streamResponse", content: errorMessage });
+      chrome.runtime.sendMessage({ action: "streamEnd" });
+      return errorMessage;
+    }
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+    const reader = response.body.getReader();
+    let fullResponse = "";
 
-    const chunk = new TextDecoder().decode(value);
-    const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    for (const line of lines) {
-      const parsedLine = JSON.parse(line);
-      if (!parsedLine.done) {
-        const content = parsedLine.message.content;
-        fullResponse += content;
-        chrome.runtime.sendMessage({ action: "streamResponse", content });
+      const chunk = new TextDecoder().decode(value);
+      const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+
+      for (const line of lines) {
+        const parsedLine = JSON.parse(line);
+        if (!parsedLine.done) {
+          const content = parsedLine.message.content;
+          fullResponse += content;
+          chrome.runtime.sendMessage({ action: "streamResponse", content });
+        }
       }
     }
-  }
 
-  return fullResponse;
+    return fullResponse;
+  } catch (error) {
+    console.log(error);
+    const errorMessage =
+      "An error occurred while communicating with the local model: " +
+      error.message +
+      "\n\n Make sure the model is running and the URL is correct.";
+    chrome.runtime.sendMessage({ action: "streamResponse", content: errorMessage });
+    chrome.runtime.sendMessage({ action: "streamEnd" });
+    return errorMessage;
+  }
 }
 
 async function handleAnthropicStream(message, model, apiKey) {
