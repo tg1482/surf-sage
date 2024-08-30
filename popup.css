@@ -67,3 +67,30 @@ button:hover {
 button:active {
   background-color: #2a6db8;
 }
+
+#local-model-group {
+  display: flex;
+  gap: 10px;
+}
+
+#local-model-input {
+  flex-grow: 1;
+}
+
+#add-local-model {
+  padding: 8px 12px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#add-local-model:hover {
+  background-color: #3a7bc8;
+}
+
+#add-local-model:active {
+  background-color: #2a6db8;
+}

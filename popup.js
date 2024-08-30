@@ -1,55 +1,79 @@
 document.addEventListener("DOMContentLoaded", function () {
+  const providerSelect = document.getElementById("provider-select");
+  const modelGroup = document.getElementById("model-group");
   const modelSelect = document.getElementById("model-select");
+  const localModelGroup = document.getElementById("local-model-group");
+  const localModelInput = document.getElementById("local-model-input");
+  const addLocalModelButton = document.getElementById("add-local-model");
   const apiKeyGroup = document.getElementById("api-key-group");
   const apiKeyInput = document.getElementById("api-key-input");
   const localUrlGroup = document.getElementById("local-url-group");
   const localUrlInput = document.getElementById("local-url-input");
   const saveButton = document.getElementById("save-button");
 
-  // Load saved preferences
-  chrome.storage.local.get(["model", "apiKey", "localUrl"], function (result) {
-    if (result.model) {
-      modelSelect.value = result.model;
-      toggleInputs(result.model);
+  const models = {
+    openai: ["gpt-4o", "gpt-4o-mini"],
+    anthropic: ["claude-3.5-sonnet", "claude-3.5-haiku"],
+    local: ["llama3.1"],
+  };
+
+  function loadModels() {
+    const provider = providerSelect.value;
+    modelSelect.innerHTML = "";
+    models[provider].forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model;
+      option.textContent = model;
+      modelSelect.appendChild(option);
+    });
+  }
+
+  function toggleInputs(provider) {
+    if (provider === "local") {
+      apiKeyGroup.style.display = "none";
+      localUrlGroup.style.display = "block";
+      localModelGroup.style.display = "block";
+    } else {
+      apiKeyGroup.style.display = "block";
+      localUrlGroup.style.display = "none";
+      localModelGroup.style.display = "none";
     }
-    if (result.apiKey) {
-      apiKeyInput.value = result.apiKey;
-    }
-    if (result.localUrl) {
-      localUrlInput.value = result.localUrl;
-    }
+  }
+
+  providerSelect.addEventListener("change", function () {
+    toggleInputs(this.value);
+    loadModels();
   });
 
-  modelSelect.addEventListener("change", function () {
-    toggleInputs(this.value);
+  addLocalModelButton.addEventListener("click", function () {
+    const newModel = localModelInput.value.trim();
+    if (newModel && !models.local.includes(newModel)) {
+      models.local.push(newModel);
+      loadModels();
+      localModelInput.value = "";
+      chrome.storage.local.set({ localModels: models.local });
+    }
   });
 
   saveButton.addEventListener("click", function () {
+    const provider = providerSelect.value;
     const model = modelSelect.value;
     const apiKey = apiKeyInput.value;
     const localUrl = localUrlInput.value;
 
     chrome.storage.local.set(
       {
+        provider: provider,
         model: model,
         apiKey: apiKey,
         localUrl: localUrl,
+        localModels: models.local,
       },
       function () {
         showSavedMessage();
       }
     );
   });
-
-  function toggleInputs(model) {
-    if (model === "local") {
-      apiKeyGroup.style.display = "none";
-      localUrlGroup.style.display = "block";
-    } else {
-      apiKeyGroup.style.display = "block";
-      localUrlGroup.style.display = "none";
-    }
-  }
 
   function showSavedMessage() {
     saveButton.textContent = "Saved!";
@@ -59,4 +83,25 @@ document.addEventListener("DOMContentLoaded", function () {
       saveButton.disabled = false;
     }, 2000);
   }
+
+  // Load saved preferences
+  chrome.storage.local.get(["provider", "model", "apiKey", "localUrl", "localModels"], function (result) {
+    if (result.provider) {
+      providerSelect.value = result.provider;
+      toggleInputs(result.provider);
+    }
+    if (result.localModels) {
+      models.local = result.localModels;
+    }
+    loadModels();
+    if (result.model) {
+      modelSelect.value = result.model;
+    }
+    if (result.apiKey) {
+      apiKeyInput.value = result.apiKey;
+    }
+    if (result.localUrl) {
+      localUrlInput.value = result.localUrl;
+    }
+  });
 });

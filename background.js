@@ -81,17 +81,21 @@ chrome.runtime.onConnect.addListener(function (port) {
 
 async function sendToGPT(message) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["model", "apiKey", "localUrl"], async function (result) {
+    chrome.storage.local.get(["provider", "model", "apiKey", "localUrl"], async function (result) {
+      const provider = result.provider || "openai";
       const model = result.model || "gpt-4o-mini";
       const apiKey = result.apiKey;
       const localUrl = result.localUrl;
 
-      if (model === "local") {
+      if (provider === "local") {
         try {
           const response = await fetch(localUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify({
+              model: model,
+              messages: [{ role: "user", content: message }],
+            }),
           });
           const data = await response.json();
           resolve(data.response);
@@ -99,8 +103,7 @@ async function sendToGPT(message) {
           reject(error);
         }
       } else {
-        // Implement API call to GPT-4 or Claude-3.5-sonnet
-        const apiUrl = model === "gpt-4o-mini" ? "https://api.openai.com/v1/chat/completions" : "https://api.anthropic.com/v1/complete";
+        const apiUrl = provider === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.anthropic.com/v1/complete";
 
         try {
           const response = await fetch(apiUrl, {
@@ -110,7 +113,7 @@ async function sendToGPT(message) {
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-              model: model === "gpt-4o-mini" ? "gpt-4o-mini" : "claude-3.5-sonnet",
+              model: model,
               messages: [{ role: "user", content: message }],
             }),
           });
