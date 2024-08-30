@@ -39,15 +39,29 @@
         gap: 10px;
       }
       .chat-item {
-        cursor: pointer;
         padding: 10px;
         border-bottom: 1px solid #34495e;
+        cursor: pointer;
       }
       .chat-item:hover {
         background-color: #34495e;
       }
-      .chat-item.selected {
-        background-color: #2980b9;
+      .chat-item > div {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .chat-item > div:first-child {
+        font-size: 0.8em;
+        color: #bdc3c7;
+      }
+      .chat-item > div:nth-child(2) {
+        font-weight: bold;
+        color: #3498db;
+      }
+      .chat-item > div:last-child {
+        font-size: 0.9em;
+        color: #ecf0f1;
       }
       #chat-container {
         flex: 1;
@@ -150,6 +164,70 @@
       }
       .message p {
         margin: 0 0 10px 0;
+      }
+      /* New styles for chat URL and history */
+      .chat-url {
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        font-size: 0.9em;
+        word-break: break-all;
+      }
+
+      .chat-url a {
+        color: #3498db;
+        text-decoration: none;
+      }
+
+      .chat-url a:hover {
+        text-decoration: underline;
+      }
+
+      .chat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .chat-item > div:first-child {
+        font-size: 0.8em;
+        color: #bdc3c7;
+      }
+
+      .chat-item > div:nth-child(2) {
+        font-weight: bold;
+      }
+
+      .chat-item > div:last-child {
+        font-size: 0.9em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .chat-date {
+        text-align: center;
+        margin: 10px 0;
+        font-weight: bold;
+        color: #7f8c8d;
+      }
+
+      .chat-url {
+        text-align: center;
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: #7f8c8d;
+      }
+
+      .chat-time {
+        font-size: 0.8em;
+        color: #95a5a6;
+        margin-right: 5px;
+      }
+
+      .message .chat-time {
+        display: block;
+        margin-bottom: 5px;
       }
     </style>
   </head>

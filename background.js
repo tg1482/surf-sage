@@ -32,6 +32,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ error: error.message });
       });
     return true;
+  } else if (request.action === "getCurrentTabUrl") {
+    getCurrentTabUrl(sendResponse);
+    return true; // Indicates we want to send a response asynchronously
   }
 });
 
@@ -86,3 +89,13 @@ async function sendToGPT(message) {
 chrome.runtime.onInstalled.addListener(() => {
   console.log("GPT Chat Assistant installed or updated");
 });
+
+function getCurrentTabUrl(callback) {
+  chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    if (tabs[0]) {
+      callback(tabs[0].url);
+    } else {
+      callback(null);
+    }
+  });
+}

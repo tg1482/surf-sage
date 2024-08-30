@@ -3,7 +3,7 @@
   "name": "GPT Chat Assistant",
   "version": "1.0",
   "description": "Ask questions to GPT from your browser",
-  "permissions": ["activeTab", "storage", "sidePanel"],
+  "permissions": ["activeTab", "storage", "sidePanel", "tabs"],
   "background": {
     "service_worker": "background.js"
   },

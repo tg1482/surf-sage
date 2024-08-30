@@ -3,12 +3,42 @@ const port = chrome.runtime.connect({ name: "mySidepanel" });
 let db;
 let currentChatId;
 
+function initDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("ChatDatabase", 6);
+    request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
+    request.onsuccess = (event) => {
+      db = event.target.result;
+      resolve(db);
+    };
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains("chats")) {
+        const objectStore = db.createObjectStore("chats", { keyPath: "chatId" });
+        objectStore.createIndex("timestamp", "timestamp", { unique: false });
+      }
+    };
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
   const userInput = document.getElementById("user-input");
   const sendButton = document.getElementById("send-button");
   const newChatButton = document.getElementById("new-chat-button");
   const chatHistory = document.getElementById("chat-history");
+
+  initDatabase()
+    .then(() => {
+      console.log("Database initialized successfully");
+      return loadChatHistory();
+    })
+    .then(() => {
+      return loadMostRecentChat();
+    })
+    .catch((error) => {
+      console.error("Error during initialization:", error);
+    });
 
   // Move the message listener inside DOMContentLoaded
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -18,29 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
       userInput.value = message.text;
     }
   });
-
-  // Initialize IndexedDB
-  const request = indexedDB.open("ChatDatabase", 2);
-  request.onerror = (event) => console.error("IndexedDB error:", event.target.error);
-  request.onsuccess = (event) => {
-    db = event.target.result;
-    loadChatHistory();
-    loadMostRecentChat();
-  };
-  request.onupgradeneeded = (event) => {
-    const db = event.target.result;
-    if (!db.objectStoreNames.contains("chats")) {
-      const objectStore = db.createObjectStore("chats", { keyPath: "id", autoIncrement: true });
-      objectStore.createIndex("timestamp", "timestamp", { unique: false });
-      objectStore.createIndex("chatId", "chatId", { unique: false });
-    } else {
-      const transaction = event.target.transaction;
-      const objectStore = transaction.objectStore("chats");
-      if (!objectStore.indexNames.contains("chatId")) {
-        objectStore.createIndex("chatId", "chatId", { unique: false });
-      }
-    }
-  };
 
   sendButton.addEventListener("click", sendMessage);
   userInput.addEventListener("keydown", (e) => {
@@ -52,34 +59,99 @@ document.addEventListener("DOMContentLoaded", () => {
 
   newChatButton.addEventListener("click", createNewChat);
 
-  function sendMessage() {
+  async function sendMessage() {
     const message = userInput.innerHTML.trim();
     if (message) {
       if (!currentChatId) {
-        createNewChat();
+        try {
+          await createNewChat();
+          console.log("New chat created, currentChatId:", currentChatId);
+        } catch (error) {
+          console.error("Error creating new chat:", error);
+          return;
+        }
       }
-      addMessageToChat("user", message);
-      saveMessageToDb("user", message);
-
-      getPageContentAndSelection()
-        .then(({ pageContent, selectedText }) => {
-          console.log("Current page content:", pageContent);
-          console.log("Selected text:", selectedText);
-
-          const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}\n\nSelected text: ${selectedText}`;
-          return sendToGPT(fullMessage);
-        })
-        .then((response) => {
-          addMessageToChat("ai", response);
-          saveMessageToDb("ai", response);
-        })
-        .catch((error) => {
-          console.error("Error in sendMessage:", error);
-          addMessageToChat("system", "An error occurred. Please try again.");
-        });
-
-      userInput.innerHTML = "";
+      proceedWithSendMessage(message);
     }
+  }
+
+  function proceedWithSendMessage(message) {
+    console.log("Sending message:", message);
+    const timestamp = Date.now();
+
+    getCurrentTabUrl()
+      .then((currentUrl) => {
+        if (!currentUrl) {
+          throw new Error("No URL found for the active tab");
+        }
+
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(["chats"], "readwrite");
+          const store = transaction.objectStore("chats");
+          const getRequest = store.get(currentChatId);
+
+          getRequest.onsuccess = (event) => {
+            let chatData = event.target.result || {
+              chatId: currentChatId,
+              timestamp: Date.now(),
+              messages: [],
+            };
+
+            const lastUrlMessage = chatData.messages.findLast((msg) => msg.type === "url");
+            const urlChanged = !lastUrlMessage || currentUrl !== lastUrlMessage.url;
+
+            if (urlChanged) {
+              const urlTimestamp = Date.now();
+              addUrlToChat(currentUrl, urlTimestamp);
+              chatData.messages.push({
+                type: "url",
+                url: currentUrl,
+                timestamp: urlTimestamp,
+              });
+            }
+
+            addMessageToChat("user", message, timestamp);
+            chatData.messages.push({
+              type: "message",
+              sender: "user",
+              message: message,
+              timestamp: timestamp,
+            });
+
+            const putRequest = store.put(chatData);
+            putRequest.onsuccess = () => resolve();
+            putRequest.onerror = (error) => reject(error);
+          };
+
+          getRequest.onerror = (error) => reject(error);
+        });
+      })
+      .then(() => {
+        console.log("User message saved to DB");
+        return getPageContentAndSelection();
+      })
+      .then(({ pageContent, selectedText }) => {
+        console.log("Current page content:", pageContent);
+        console.log("Selected text:", selectedText);
+
+        const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}\n\nSelected text: ${selectedText}`;
+        return sendToGPT(fullMessage);
+      })
+      .then((response) => {
+        console.log("GPT response received:", response);
+        const aiTimestamp = Date.now();
+        addMessageToChat("ai", response, aiTimestamp);
+        return saveMessageToDb("ai", response);
+      })
+      .then(() => {
+        console.log("AI response saved to DB");
+      })
+      .catch((error) => {
+        console.error("Error in sendMessage:", error);
+        addMessageToChat("system", "An error occurred. Please try again.", Date.now());
+      });
+
+    userInput.innerHTML = "";
   }
 
   function getPageContentAndSelection() {
@@ -119,24 +191,30 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function addMessageToChat(sender, message) {
+  function addMessageToChat(sender, message, timestamp) {
     const messageElement = document.createElement("div");
     messageElement.classList.add("message", sender);
 
-    // Check if the message contains a blockquote
+    const time = new Date(timestamp).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const timeElement = document.createElement("span");
+    timeElement.classList.add("chat-time");
+    timeElement.textContent = time;
+    messageElement.appendChild(timeElement);
+
+    const messageContent = document.createElement("div");
+    messageContent.classList.add("message-content");
+
     if (message.includes("<blockquote>")) {
-      // If it does, use innerHTML to preserve the HTML structure
-      const parts = message.split("</blockquote>");
-      messageElement.innerHTML = parts[0] + "</blockquote>";
-      if (parts[1] && parts[1].trim()) {
-        messageElement.innerHTML += `<p>${parts[1].trim()}</p>`;
-      }
+      messageContent.innerHTML = message;
     } else {
-      // If it doesn't, use textContent for safe text insertion
-      messageElement.textContent = message;
+      messageContent.textContent = message;
     }
 
-    // Ensure links are clickable
+    messageElement.appendChild(messageContent);
+
     messageElement.querySelectorAll("a").forEach((link) => {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
@@ -146,80 +224,276 @@ document.addEventListener("DOMContentLoaded", () => {
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  function saveMessageToDb(sender, message) {
+  // Replace the chrome.tabs.query calls with this function
+  function getCurrentTabUrl() {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ action: "getCurrentTabUrl" }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else if (response) {
+          resolve(response);
+        } else {
+          reject(new Error("No active tab found"));
+        }
+      });
+    });
+  }
+
+  // Update the createNewChat function
+  async function createNewChat() {
     if (!db) {
-      console.error("Database not initialized");
-      return;
+      throw new Error("Database not initialized");
     }
-    const transaction = db.transaction(["chats"], "readwrite");
-    const store = transaction.objectStore("chats");
-    const chatMessage = {
-      chatId: currentChatId,
-      sender: sender,
-      message: message,
-      timestamp: new Date().getTime(),
-    };
-    store.add(chatMessage).onsuccess = () => {
-      loadChatHistory();
-    };
+
+    try {
+      const url = await getCurrentTabUrl();
+      if (!url) {
+        throw new Error("No URL found for the active tab");
+      }
+
+      currentChatId = Date.now().toString();
+      chatMessages.innerHTML = "";
+      userInput.innerHTML = "";
+      userInput.focus();
+
+      const transaction = db.transaction(["chats"], "readwrite");
+      const store = transaction.objectStore("chats");
+      const newChat = {
+        chatId: currentChatId,
+        timestamp: Date.now(),
+        messages: [
+          {
+            type: "url",
+            url: url,
+            timestamp: Date.now(),
+          },
+        ],
+      };
+
+      await new Promise((resolve, reject) => {
+        const addRequest = store.add(newChat);
+        addRequest.onsuccess = () => {
+          console.log("New chat created successfully");
+          resolve();
+        };
+        addRequest.onerror = (error) => {
+          console.error("Error creating new chat:", error);
+          reject(error);
+        };
+      });
+
+      await loadChatHistory();
+      updateSelectedChat(currentChatId);
+      await loadChat(currentChatId);
+
+      console.log("New chat created with URL:", url);
+    } catch (error) {
+      console.error("Error in createNewChat:", error);
+      throw error;
+    }
+  }
+
+  // Update the saveMessageToDb function
+  function saveMessageToDb(sender, message) {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject("Database not initialized");
+        return;
+      }
+
+      getCurrentTabUrl()
+        .then((currentUrl) => {
+          if (!currentUrl) {
+            console.error("No URL found for the active tab");
+            reject("No URL found for the active tab");
+            return;
+          }
+
+          console.log("Saving message with URL:", currentUrl);
+
+          const transaction = db.transaction(["chats"], "readwrite");
+          const store = transaction.objectStore("chats");
+
+          const getRequest = store.get(currentChatId);
+          getRequest.onsuccess = (event) => {
+            let chatData = event.target.result || {
+              chatId: currentChatId,
+              timestamp: Date.now(),
+              messages: [],
+            };
+
+            const lastUrlMessage = chatData.messages.findLast((msg) => msg.type === "url");
+            const urlChanged = !lastUrlMessage || currentUrl !== lastUrlMessage.url;
+
+            if (urlChanged) {
+              const urlTimestamp = Date.now();
+              const urlMessage = {
+                type: "url",
+                url: currentUrl,
+                timestamp: urlTimestamp,
+              };
+              chatData.messages.push(urlMessage);
+            }
+
+            const messageTimestamp = Date.now();
+            const newMessage = {
+              type: "message",
+              sender: sender,
+              message: message,
+              timestamp: messageTimestamp,
+            };
+            chatData.messages.push(newMessage);
+
+            const putRequest = store.put(chatData);
+            putRequest.onsuccess = () => {
+              console.log("Chat data saved successfully");
+              loadChatHistory();
+              resolve();
+            };
+            putRequest.onerror = (error) => {
+              console.error("Error saving chat data:", error);
+              reject(error);
+            };
+          };
+          getRequest.onerror = (error) => {
+            console.error("Error retrieving chat data:", error);
+            reject(error);
+          };
+        })
+        .catch((error) => {
+          console.error("Error getting current tab URL:", error);
+          reject(error);
+        });
+    });
   }
 
   function loadChatHistory() {
-    if (!db) {
-      console.error("Database not initialized");
-      return;
-    }
-    const transaction = db.transaction(["chats"], "readonly");
-    const store = transaction.objectStore("chats");
-    const index = store.index("timestamp");
-    const request = index.openCursor(null, "prev");
-    const chats = new Map();
-
-    chatHistory.innerHTML = "";
-
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        const chatId = cursor.value.chatId;
-        if (!chats.has(chatId)) {
-          chats.set(chatId, cursor.value);
-          const chatItem = document.createElement("div");
-          chatItem.classList.add("chat-item");
-          chatItem.dataset.chatId = chatId;
-          chatItem.textContent = `${new Date(cursor.value.timestamp).toLocaleString()} - ${cursor.value.message.substring(0, 30)}...`;
-          chatItem.addEventListener("click", () => loadChat(chatId));
-          chatHistory.appendChild(chatItem);
-        }
-        cursor.continue();
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject("Database not initialized");
+        return;
       }
-    };
+
+      const transaction = db.transaction(["chats"], "readonly");
+      const store = transaction.objectStore("chats");
+      const index = store.index("timestamp");
+      const request = index.openCursor(null, "prev");
+      const chats = new Map();
+
+      chatHistory.innerHTML = "";
+
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          const chatData = cursor.value;
+          if (!chats.has(chatData.chatId)) {
+            chats.set(chatData.chatId, chatData);
+            const chatItem = createChatHistoryItem(chatData);
+            chatHistory.appendChild(chatItem);
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+
+      request.onerror = (event) => {
+        console.error("Error loading chat history:", event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+
+  function formatTimestamp(timestamp) {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "<1 min ago";
+    if (minutes < 60) return `${minutes} min${minutes > 1 ? "s" : ""} ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
+
+    return new Date(timestamp).toLocaleDateString();
   }
 
   function loadChat(chatId) {
-    console.log("Loading chat:", chatId); // Debug log
-    if (!db) {
-      console.error("Database not initialized");
-      return;
-    }
-    currentChatId = chatId;
-    chatMessages.innerHTML = "";
-    const transaction = db.transaction(["chats"], "readonly");
-    const store = transaction.objectStore("chats");
-    const index = store.index("chatId");
-    const request = index.getAll(chatId);
-
-    request.onsuccess = (event) => {
-      const messages = event.target.result;
-      console.log("Messages for chat:", messages); // Debug log
-      if (messages.length === 0) {
-        console.log("No messages found for chatId:", chatId); // Debug log
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject("Database not initialized");
+        return;
       }
-      messages.sort((a, b) => a.timestamp - b.timestamp);
-      messages.forEach((msg) => addMessageToChat(msg.sender, msg.message));
-    };
 
-    // Update the visual feedback for the selected chat
-    updateSelectedChat(chatId);
+      console.log("Loading chat:", chatId);
+      currentChatId = chatId;
+      chatMessages.innerHTML = "";
+
+      const transaction = db.transaction(["chats"], "readonly");
+      const store = transaction.objectStore("chats");
+      const request = store.get(chatId);
+
+      request.onsuccess = (event) => {
+        const chatData = event.target.result;
+        console.log("Chat data:", chatData);
+        if (!chatData) {
+          console.log("No chat data found for chatId:", chatId);
+          resolve();
+          return;
+        }
+
+        let currentDate = null;
+        if (Array.isArray(chatData.messages)) {
+          chatData.messages.forEach((item) => {
+            const itemDate = new Date(item.timestamp).toLocaleDateString();
+            if (itemDate !== currentDate) {
+              currentDate = itemDate;
+              addDateToChat(currentDate);
+            }
+            if (item.type === "url") {
+              addUrlToChat(item.url, item.timestamp);
+            } else if (item.type === "message") {
+              addMessageToChat(item.sender, item.message, item.timestamp);
+            }
+          });
+        } else {
+          console.error("Chat messages are not in the expected format:", chatData.messages);
+        }
+        updateSelectedChat(chatId);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        resolve();
+      };
+
+      request.onerror = (event) => {
+        console.error("Error loading chat:", event.target.error);
+        reject(event.target.error);
+      };
+    });
+  }
+
+  function addDateToChat(date) {
+    const dateElement = document.createElement("div");
+    dateElement.classList.add("chat-date");
+    dateElement.textContent = new Date(date).toLocaleDateString(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    chatMessages.appendChild(dateElement);
+  }
+
+  function addUrlToChat(url, timestamp) {
+    const urlElement = document.createElement("div");
+    urlElement.classList.add("chat-url");
+    const time = new Date(timestamp).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    urlElement.innerHTML = `<span class="chat-time">${time}</span> <a href="${url}" target="_blank">${url}</a>`;
+    chatMessages.appendChild(urlElement);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
   function updateSelectedChat(chatId) {
@@ -233,34 +507,69 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function createNewChat() {
-    currentChatId = Date.now().toString();
-    chatMessages.innerHTML = "";
-    userInput.value = "";
-    userInput.focus();
-    loadChatHistory(); // Refresh the chat history to include the new chat
-    updateSelectedChat(currentChatId);
+  function loadMostRecentChat() {
+    return new Promise((resolve, reject) => {
+      if (!db) {
+        reject("Database not initialized");
+        return;
+      }
+
+      const transaction = db.transaction(["chats"], "readonly");
+      const store = transaction.objectStore("chats");
+      const index = store.index("timestamp");
+      const request = index.openCursor(null, "prev");
+
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          loadChat(cursor.value.chatId).then(resolve).catch(reject);
+        } else {
+          createNewChat().then(resolve).catch(reject);
+        }
+      };
+
+      request.onerror = (event) => {
+        console.error("Error loading most recent chat:", event.target.error);
+        reject(event.target.error);
+      };
+    });
   }
 
-  function loadMostRecentChat() {
-    if (!db) {
-      console.error("Database not initialized");
-      return;
-    }
-    const transaction = db.transaction(["chats"], "readonly");
-    const store = transaction.objectStore("chats");
-    const index = store.index("timestamp");
-    const request = index.openCursor(null, "prev");
+  // Helper function to create chat history item
+  function createChatHistoryItem(chatData) {
+    const chatItem = document.createElement("div");
+    chatItem.classList.add("chat-item");
+    chatItem.dataset.chatId = chatData.chatId;
 
-    request.onsuccess = (event) => {
-      const cursor = event.target.result;
-      if (cursor) {
-        loadChat(cursor.value.chatId);
-      } else {
-        // No existing chats, create a new one
-        createNewChat();
+    const timeAgo = formatTimestamp(chatData.timestamp);
+
+    // Extract unique domains from chat messages
+    const domains = new Set();
+    chatData.messages.forEach((msg) => {
+      if (msg.type === "url" && msg.url) {
+        try {
+          const url = new URL(msg.url);
+          domains.add(url.hostname);
+        } catch (error) {
+          console.error("Invalid URL:", msg.url);
+        }
       }
-    };
+    });
+
+    // Convert Set to Array and get up to 3 domains
+    const domainList = Array.from(domains).slice(0, 3);
+    const domainText = domainList.join(", ") || "No domains";
+
+    const lastMessage = chatData.messages.findLast((msg) => msg.type === "message")?.message || "New chat";
+
+    chatItem.innerHTML = `
+      <div>${timeAgo}</div>
+      <div title="${domainText}">${domainText}</div>
+      <div title="${lastMessage}">${lastMessage.substring(0, 30)}${lastMessage.length > 30 ? "..." : ""}</div>
+    `;
+
+    chatItem.addEventListener("click", () => loadChat(chatData.chatId));
+    return chatItem;
   }
 
   function setInputAsQuote(text) {
