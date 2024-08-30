@@ -19,16 +19,26 @@ chrome.commands.onCommand.addListener((command) => {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getSelectedText") {
-    chrome.tabs.sendMessage(sender.tab.id, { action: "getSelectedText" }, (response) => {
-      sendResponse(response);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "getSelectedText" }, (response) => {
+          sendResponse(response);
+        });
+      } else {
+        sendResponse({ error: "No active tab found" });
+      }
     });
     return true;
   } else if (request.action === "sendToGPT") {
     // Implement API call to OpenAI or other provider here
     // This is a placeholder function
-    sendToGPT(request.message).then((response) => {
-      sendResponse(response);
-    });
+    sendToGPT(request.message)
+      .then((response) => {
+        sendResponse(response);
+      })
+      .catch((error) => {
+        sendResponse({ error: error.message });
+      });
     return true;
   }
 });
@@ -41,8 +51,4 @@ async function sendToGPT(message) {
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log("GPT Chat Assistant installed or updated");
-});
-
-chrome.commands.onCommand.addListener((command) => {
-  console.log("Command received:", command);
 });

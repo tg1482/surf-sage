@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatHistory = document.getElementById("chat-history");
 
   // Initialize IndexedDB
-  const request = indexedDB.open("ChatDatabase", 2); // Increment version to trigger onupgradeneeded
+  const request = indexedDB.open("ChatDatabase", 2);
   request.onerror = (event) => console.error("IndexedDB error:", event.target.error);
   request.onsuccess = (event) => {
     db = event.target.result;
@@ -56,14 +56,42 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       addMessageToChat("user", message);
       saveMessageToDb("user", message);
-      chrome.runtime.sendMessage({ action: "sendToGPT", message: message }, (response) => {
-        if (response) {
-          addMessageToChat("ai", response.response);
-          saveMessageToDb("ai", response.response);
-        }
+
+      // Get page content before sending the message
+      getPageContent((pageContent) => {
+        console.log("Current page content:", pageContent);
+
+        // Prepare the message with page content
+        const fullMessage = `User message: ${message}\n\nPage content: ${pageContent}`;
+
+        chrome.runtime.sendMessage({ action: "sendToGPT", message: fullMessage }, (response) => {
+          if (response) {
+            addMessageToChat("ai", response.response);
+            saveMessageToDb("ai", response.response);
+          }
+        });
       });
+
       userInput.value = "";
     }
+  }
+
+  function getPageContent(callback) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "getPageContent" }, (response) => {
+          if (response && response.pageContent) {
+            callback(response.pageContent);
+          } else {
+            console.error("Error getting page content:", chrome.runtime.lastError);
+            callback("Unable to retrieve page content.");
+          }
+        });
+      } else {
+        console.error("No active tab found");
+        callback("No active tab found.");
+      }
+    });
   }
 
   function addMessageToChat(sender, message) {
@@ -194,6 +222,32 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
     if (response && response.selectedText) {
       userInput.value = response.selectedText;
+    } else if (response && response.error) {
+      console.error("Error getting selected text:", response.error);
+    }
+  });
+
+  // Handle messages from the content script
+  window.addEventListener("message", (event) => {
+    if (event.data.type === "selectedText" && event.data.text) {
+      if (!currentChatId) {
+        createNewChat();
+      }
+      userInput.value = event.data.text;
+    }
+  });
+
+  // // Get selected text when the side panel is opened
+  chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
+    if (response && response.selectedText) {
+      if (!currentChatId) {
+        createNewChat();
+      }
+      // addMessageToChat("user", "Selected text: " + response.selectedText);
+      // saveMessageToDb("user", "Selected text: " + response.selectedText);
+      userInput.value = response.selectedText;
+    } else if (response && response.error) {
+      console.error("Error getting selected text:", response.error);
     }
   });
 });

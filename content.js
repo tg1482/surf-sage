@@ -1,4 +1,18 @@
+// content.js
 let sidePanel = null;
+
+// Function to get the main content of the page
+function getPageContent() {
+  // This is a simple implementation. You might need to adjust this based on the structure of the websites you're targeting.
+  let content = document.body.innerText;
+  console.log("Page content:", content);
+  return content;
+}
+
+// Function to get the highlighted text
+function getHighlightedText() {
+  return window.getSelection().toString();
+}
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "openSidePanel") {
@@ -6,7 +20,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       createSidePanel();
     }
     toggleSidePanel();
+  } else if (request.action === "getSelectedText") {
+    sendResponse({ selectedText: getHighlightedText() });
+  } else if (request.action === "getPageContent") {
+    sendResponse({ pageContent: getPageContent() });
   }
+  return true;
 });
 
 function createSidePanel() {
@@ -30,7 +49,7 @@ function createSidePanel() {
     height: 100%;
     border: none;
   `;
-  iframe.src = chrome.runtime.getURL("chat.html");
+  iframe.src = chrome.runtime.getURL("sidepanel.html");
 
   sidePanel.appendChild(iframe);
   document.body.appendChild(sidePanel);
@@ -41,7 +60,7 @@ function toggleSidePanel() {
     sidePanel.style.right = "-400px";
   } else {
     sidePanel.style.right = "0px";
-    const selectedText = window.getSelection().toString();
+    const selectedText = getHighlightedText();
     if (selectedText) {
       sidePanel.querySelector("iframe").contentWindow.postMessage(
         {
@@ -53,3 +72,6 @@ function toggleSidePanel() {
     }
   }
 }
+
+// Print page content to console when the script loads
+console.log("Page content:", getPageContent());
