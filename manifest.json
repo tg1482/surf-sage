@@ -4,11 +4,13 @@
   "version": "1.0",
   "description": "Ask questions to GPT from your browser",
   "permissions": ["activeTab", "storage", "sidePanel", "tabs"],
+  "host_permissions": ["https://api.openai.com/*", "https://api.anthropic.com/*"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open GPT Chat"
+    "default_popup": "popup.html",
+    "default_title": "GPT Chat Assistant Settings"
   },
   "commands": {
     "toggle_side_panel": {

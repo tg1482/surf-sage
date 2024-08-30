@@ -80,10 +80,48 @@ chrome.runtime.onConnect.addListener(function (port) {
 });
 
 async function sendToGPT(message) {
-  // Implement your API call here
-  // This is a placeholder implementation with a delay to simulate an API call
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return "This is a placeholder response from GPT.";
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["model", "apiKey", "localUrl"], async function (result) {
+      const model = result.model || "gpt-4o-mini";
+      const apiKey = result.apiKey;
+      const localUrl = result.localUrl;
+
+      if (model === "local") {
+        try {
+          const response = await fetch(localUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message }),
+          });
+          const data = await response.json();
+          resolve(data.response);
+        } catch (error) {
+          reject(error);
+        }
+      } else {
+        // Implement API call to GPT-4 or Claude-3.5-sonnet
+        const apiUrl = model === "gpt-4o-mini" ? "https://api.openai.com/v1/chat/completions" : "https://api.anthropic.com/v1/complete";
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: model === "gpt-4o-mini" ? "gpt-4o-mini" : "claude-3.5-sonnet",
+              messages: [{ role: "user", content: message }],
+            }),
+          });
+          const data = await response.json();
+          resolve(data.choices[0].message.content);
+        } catch (error) {
+          reject(error);
+        }
+      }
+    });
+  });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
