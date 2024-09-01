@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "GPT Chat Assistant",
+  "name": "Surf Sage",
   "version": "2.0",
   "description": "Ask questions to GPT from your browser",
   "permissions": ["activeTab", "storage", "sidePanel", "tabs"],
@@ -10,7 +10,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "GPT Chat Assistant"
+    "default_title": "Surf Sage"
   },
   "commands": {
     "toggle_side_panel": {
