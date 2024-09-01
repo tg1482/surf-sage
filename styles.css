@@ -5,6 +5,11 @@ body {
   display: flex;
   height: 100vh;
   background-color: #f0f0f0;
+  transition: margin-left 0.3s ease;
+}
+
+body.sidebar-collapsed {
+  margin-left: 0;
 }
 
 #sidebar {
@@ -13,6 +18,16 @@ body {
   color: white;
   padding: 20px;
   overflow-y: auto;
+  transition: width 0.3s ease;
+  overflow-x: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+#sidebar.collapsed {
+  width: 0;
+  padding: 0;
 }
 
 #sidebar-header {
@@ -38,17 +53,43 @@ body {
   background-color: #2980b9;
 }
 
+#minimize-button,
+#expand-sidebar-button,
+#new-chat-button-collapsed {
+  width: 30px;
+  height: 30px;
+  background-color: #34495e;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 5px 0 10px;
+}
+
+#minimize-button:hover,
+#expand-sidebar-button:hover,
+#new-chat-button-collapsed:hover {
+  background-color: #2c3e50;
+}
+
+#new-chat-button-collapsed {
+  background-color: #3498db;
+}
+
 #settings-button {
+  margin-top: auto;
   padding: 10px;
   background-color: #34495e;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-}
-
-#settings-button:hover {
-  background-color: #2c3e50;
+  font-size: 14px;
+  text-align: left;
 }
 
 #chat-history {
@@ -96,6 +137,11 @@ body {
   display: flex;
   flex-direction: column;
   background-color: white;
+  transition: margin-left 0.3s ease;
+}
+
+body.sidebar-collapsed #chat-container {
+  margin-left: 40px;
 }
 
 #chat-messages {
@@ -403,7 +449,6 @@ body {
   background-color: #d0d0d0;
 }
 
-/* Add these new styles */
 .provider-tabs {
   display: flex;
   justify-content: space-between;
@@ -451,12 +496,38 @@ body {
   background-color: #3a7bc8;
 }
 
-/* Remove these styles as they're no longer needed */
-#local-model-group {
-  display: flex;
-  gap: 10px;
+#sidebar-toggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  cursor: pointer;
+  font-size: 20px;
 }
 
-#local-model-input {
-  flex-grow: 1;
+body.sidebar-collapsed #new-chat-button-collapsed {
+  display: block;
+}
+
+body.sidebar-collapsed #sidebar-toggle {
+  display: none;
+}
+
+#collapsed-sidebar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 100%;
+  background-color: #2c3e50;
+  z-index: 1000;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 10px;
+}
+
+body.sidebar-collapsed #collapsed-sidebar {
+  display: flex;
 }

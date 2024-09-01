@@ -26,6 +26,20 @@
         "mac": "MacCtrl+M"
       },
       "description": "Toggle GPT Model"
+    },
+    "toggle_sidebar": {
+      "suggested_key": {
+        "default": "Ctrl+B",
+        "mac": "MacCtrl+B"
+      },
+      "description": "Toggle Chat History Sidebar"
+    },
+    "create_new_chat": {
+      "suggested_key": {
+        "default": "Ctrl+N",
+        "mac": "MacCtrl+N"
+      },
+      "description": "Create a new chat"
     }
   },
   "side_panel": {

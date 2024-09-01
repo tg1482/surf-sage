@@ -33,6 +33,10 @@ chrome.commands.onCommand.addListener((command) => {
     });
   } else if (command === "toggle_model") {
     toggleModel();
+  } else if (command === "toggle_sidebar") {
+    chrome.runtime.sendMessage({ action: "toggleSidebar" });
+  } else if (command === "create_new_chat") {
+    chrome.runtime.sendMessage({ action: "createNewChat" });
   }
 });
 

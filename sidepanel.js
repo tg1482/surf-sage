@@ -39,6 +39,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.action === "modelChanged") {
     console.log("Received modelChanged message:", message.model);
     updateModelSelect(message.model);
+  } else if (message.action === "toggleSidebar") {
+    toggleSidebar();
+  } else if (message.action === "createNewChat") {
+    createNewChat();
   }
 });
 
@@ -76,6 +80,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const newChatButton = document.getElementById("new-chat-button");
   const chatHistory = document.getElementById("chat-history");
   const modelSelect = document.getElementById("model-select");
+
+  const minimizeButton = document.getElementById("minimize-button");
+  const expandSidebarButton = document.getElementById("expand-sidebar-button");
+  const newChatButtonCollapsed = document.getElementById("new-chat-button-collapsed");
+
+  function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const body = document.body;
+    const collapsedSidebar = document.getElementById("collapsed-sidebar");
+
+    sidebar.classList.toggle("collapsed");
+    body.classList.toggle("sidebar-collapsed");
+
+    if (body.classList.contains("sidebar-collapsed")) {
+      collapsedSidebar.style.display = "flex";
+    } else {
+      collapsedSidebar.style.display = "none";
+    }
+  }
+
+  minimizeButton.addEventListener("click", toggleSidebar);
+  expandSidebarButton.addEventListener("click", toggleSidebar);
+  newChatButtonCollapsed.addEventListener("click", () => {
+    createNewChat();
+    toggleSidebar();
+  });
 
   modelSelect.addEventListener("change", function () {
     chrome.storage.local.set({ model: this.value });
@@ -770,4 +800,41 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("beforeunload", handlePanelClose);
 
   initializeModelSelect();
+
+  // Add this to your existing chrome.runtime.onMessage listener
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "closeSidebar") {
+      window.close();
+    } else if (message.action === "updateInput") {
+      const userInput = document.getElementById("user-input");
+      if (userInput) {
+        userInput.innerHTML = message.text;
+      }
+    } else if (message.action === "modelChanged") {
+      console.log("Received modelChanged message:", message.model);
+      updateModelSelect(message.model);
+    } else if (message.action === "toggleSidebar") {
+      toggleSidebar();
+    } else if (message.action === "createNewChat") {
+      createNewChat();
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const sidebarToggle = document.getElementById("sidebar-toggle");
+    if (sidebarToggle) {
+      sidebarToggle.addEventListener("click", toggleSidebar);
+    }
+
+    const minimizeButton = document.getElementById("minimize-button");
+    const expandSidebarButton = document.getElementById("expand-sidebar-button");
+    const newChatButtonCollapsed = document.getElementById("new-chat-button-collapsed");
+
+    minimizeButton.addEventListener("click", toggleSidebar);
+    expandSidebarButton.addEventListener("click", toggleSidebar);
+    newChatButtonCollapsed.addEventListener("click", () => {
+      createNewChat();
+      toggleSidebar();
+    });
+  });
 });
