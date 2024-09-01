@@ -1,6 +1,40 @@
+import { models, defaults, defaultProvider } from "./config.js";
+
 // background.js
 let sidePanelOpen = false;
 let currentSelectedText = "";
+let currentModelIndex = 0;
+
+// Add this near the top of the file
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle_side_panel") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) {
+        if (sidePanelOpen) {
+          if (currentSelectedText) {
+            // If panel is open and text is selected, send text to input
+            chrome.runtime.sendMessage({
+              action: "updateInput",
+              text: currentSelectedText,
+            });
+          } else {
+            // If panel is open but no text selected, close the panel
+            chrome.runtime.sendMessage({
+              action: "closeSidebar",
+            });
+            sidePanelOpen = false;
+          }
+        } else {
+          // Open the side panel
+          chrome.sidePanel.open({ tabId: tabs[0].id });
+          sidePanelOpen = true;
+        }
+      }
+    });
+  } else if (command === "toggle_model") {
+    toggleModel();
+  }
+});
 
 // Listen for selection changes from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -35,34 +69,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === "getCurrentTabUrl") {
     getCurrentTabUrl(sendResponse);
     return true; // Indicates we want to send a response asynchronously
-  }
-});
-
-chrome.commands.onCommand.addListener((command) => {
-  if (command === "toggle_side_panel") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]) {
-        if (sidePanelOpen) {
-          if (currentSelectedText) {
-            // If panel is open and text is selected, send text to input
-            chrome.runtime.sendMessage({
-              action: "updateInput",
-              text: currentSelectedText,
-            });
-          } else {
-            // If panel is open but no text selected, close the panel
-            chrome.runtime.sendMessage({
-              action: "closeSidebar",
-            });
-            sidePanelOpen = false;
-          }
-        } else {
-          // Open the side panel
-          chrome.sidePanel.open({ tabId: tabs[0].id });
-          sidePanelOpen = true;
-        }
-      }
-    });
   }
 });
 
@@ -261,5 +267,31 @@ function getCurrentTabUrl(callback) {
     } else {
       callback(null);
     }
+  });
+}
+
+// Modify the toggleModel function in background.js
+function toggleModel() {
+  chrome.storage.local.get(["provider", "localModels"], (result) => {
+    const provider = result.provider || defaultProvider;
+    let availableModels = models[provider];
+
+    if (provider === "local" && result.localModels && result.localModels.length > 0) {
+      availableModels = result.localModels;
+    }
+
+    if (availableModels.length === 0) {
+      console.log("No models available for the current provider");
+      return;
+    }
+
+    currentModelIndex = (currentModelIndex + 1) % availableModels.length;
+    const newModel = availableModels[currentModelIndex];
+
+    chrome.storage.local.set({ model: newModel }, () => {
+      console.log(`Model switched to: ${newModel}`);
+      // Notify the sidepanel about the model change
+      chrome.runtime.sendMessage({ action: "modelChanged", model: newModel });
+    });
   });
 }

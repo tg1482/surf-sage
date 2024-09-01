@@ -6,7 +6,8 @@
   "permissions": ["activeTab", "storage", "sidePanel", "tabs"],
   "host_permissions": ["https://api.openai.com/*", "https://api.anthropic.com/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_title": "GPT Chat Assistant"
@@ -18,6 +19,13 @@
         "mac": "MacCtrl+L"
       },
       "description": "Toggle GPT Chat Side Panel"
+    },
+    "toggle_model": {
+      "suggested_key": {
+        "default": "Ctrl+M",
+        "mac": "MacCtrl+M"
+      },
+      "description": "Toggle GPT Model"
     }
   },
   "side_panel": {

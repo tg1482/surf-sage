@@ -1,23 +1,4 @@
-const models = {
-  openai: ["gpt-4o", "gpt-4o-mini"],
-  anthropic: ["claude-3.5-sonnet", "claude-3.5-haiku"],
-  local: ["llama3.1"],
-};
-
-const defaults = {
-  openai: {
-    model: "gpt-4o-mini",
-    apiKey: "",
-  },
-  anthropic: {
-    model: "claude-3.5-sonnet",
-    apiKey: "",
-  },
-  local: {
-    model: "llama3.1",
-    localUrl: "http://localhost:11434/api/chat",
-  },
-};
+import { models, defaults, defaultProvider } from "./config.js";
 
 function initializeSettings() {
   const providerTabs = document.querySelectorAll(".provider-tab");
@@ -38,7 +19,8 @@ function initializeSettings() {
 
   function loadModels() {
     settingsModelSelect.innerHTML = "";
-    models[currentProvider].forEach((model) => {
+    const availableModels = currentProvider === "local" ? chrome.storage.local.get("localModels") || models.local : models[currentProvider];
+    availableModels.forEach((model) => {
       const option = document.createElement("option");
       option.value = model;
       option.textContent = model;

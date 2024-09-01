@@ -1,12 +1,73 @@
 import { initializeSettings } from "./settings.js";
+import { models, defaults, defaultProvider } from "./config.js";
 
-// Move this outside of DOMContentLoaded
-document.addEventListener("keydown", (e) => {
-  if (e.ctrlKey && e.key === "m") {
-    e.preventDefault();
-    toggleModel();
+// Move updateModelSelect outside of DOMContentLoaded
+function updateModelSelect(newModel) {
+  console.log("Updating model select to:", newModel);
+  const modelSelect = document.getElementById("model-select");
+  if (modelSelect) {
+    console.log(
+      "Model select options:",
+      Array.from(modelSelect.options).map((opt) => opt.value)
+    );
+    let found = false;
+    for (let i = 0; i < modelSelect.options.length; i++) {
+      if (modelSelect.options[i].value === newModel) {
+        modelSelect.selectedIndex = i;
+        found = true;
+        console.log("Model updated successfully to index:", i);
+        break;
+      }
+    }
+    if (!found) {
+      console.error("Model not found in options:", newModel);
+    }
+  } else {
+    console.error("Model select element not found");
+  }
+}
+
+// Move the message listener outside of DOMContentLoaded
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "closeSidebar") {
+    window.close();
+  } else if (message.action === "updateInput") {
+    const userInput = document.getElementById("user-input");
+    if (userInput) {
+      userInput.innerHTML = message.text;
+    }
+  } else if (message.action === "modelChanged") {
+    console.log("Received modelChanged message:", message.model);
+    updateModelSelect(message.model);
   }
 });
+
+function initializeModelSelect() {
+  chrome.storage.local.get(["provider", "model", "apiKey", "localUrl", "localModels"], (result) => {
+    const provider = result.provider || defaultProvider;
+    const currentModel = result.model || defaults[provider].model;
+    const localModels = result.localModels || models.local;
+
+    const modelSelect = document.getElementById("model-select");
+    modelSelect.innerHTML = "";
+
+    let availableModels = models[provider];
+    if (provider === "local") {
+      availableModels = localModels;
+    }
+
+    availableModels.forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model;
+      option.textContent = `${provider}: ${model}`;
+      modelSelect.appendChild(option);
+    });
+
+    if (currentModel) {
+      updateModelSelect(currentModel);
+    }
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
@@ -16,25 +77,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatHistory = document.getElementById("chat-history");
   const modelSelect = document.getElementById("model-select");
 
-  const { updateConfiguredModels, openSettings } = initializeSettings();
-
   modelSelect.addEventListener("change", function () {
     chrome.storage.local.set({ model: this.value });
   });
 
-  // Function to toggle model
-  async function toggleModel() {
-    const modelsAvailable = await updateConfiguredModels();
-    if (!modelsAvailable) {
-      openSettings();
-      return;
-    }
-    const options = modelSelect.options;
-    const currentIndex = modelSelect.selectedIndex;
-    const nextIndex = (currentIndex + 1) % options.length;
-    modelSelect.selectedIndex = nextIndex;
-    chrome.storage.local.set({ model: options[nextIndex].value });
-  }
+  const { updateConfiguredModels, openSettings } = initializeSettings();
 
   // Listen for storage changes
   chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -75,15 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .catch((error) => {
       console.error("Error during initialization:", error);
     });
-
-  // Move the message listener inside DOMContentLoaded
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "closeSidebar") {
-      window.close();
-    } else if (message.action === "updateInput") {
-      userInput.innerHTML = message.text;
-    }
-  });
 
   sendButton.addEventListener("click", sendMessage);
   userInput.addEventListener("keydown", (e) => {
@@ -730,4 +768,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Add an event listener for when the window is about to unload
   window.addEventListener("beforeunload", handlePanelClose);
+
+  initializeModelSelect();
 });
