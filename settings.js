@@ -19,12 +19,14 @@ function initializeSettings() {
 
   function loadModels() {
     settingsModelSelect.innerHTML = "";
-    const availableModels = currentProvider === "local" ? chrome.storage.local.get("localModels") || models.local : models[currentProvider];
-    availableModels.forEach((model) => {
-      const option = document.createElement("option");
-      option.value = model;
-      option.textContent = model;
-      settingsModelSelect.appendChild(option);
+    chrome.storage.local.get("localModels", (result) => {
+      const availableModels = currentProvider === "local" ? result.localModels || models.local : models[currentProvider];
+      availableModels.forEach((model) => {
+        const option = document.createElement("option");
+        option.value = model;
+        option.textContent = model;
+        settingsModelSelect.appendChild(option);
+      });
     });
   }
 
@@ -38,6 +40,17 @@ function initializeSettings() {
       localUrlGroup.style.display = "none";
       localModelGroup.style.display = "none";
     }
+
+    // Load the appropriate API key
+    chrome.storage.local.get(["openaiApiKey", "anthropicApiKey", "apiKey"], (result) => {
+      console.log("Stored API keys:", result); // Debugging line
+      if (provider === "openai") {
+        apiKeyInput.value = result.openaiApiKey || result.apiKey || "";
+      } else if (provider === "anthropic") {
+        apiKeyInput.value = result.anthropicApiKey || "";
+      }
+      console.log("Current provider:", provider, "API Key:", apiKeyInput.value); // Debugging line
+    });
   }
 
   providerTabs.forEach((tab) => {
@@ -54,29 +67,38 @@ function initializeSettings() {
     const modelSelect = document.getElementById("model-select");
     modelSelect.innerHTML = "";
     return new Promise((resolve) => {
-      chrome.storage.local.get(["provider", "model", "apiKey", "localUrl", "localModels"], (result) => {
-        const provider = result.provider || "openai";
-        const model = result.model || defaults[provider].model;
-        const apiKey = result.apiKey || defaults[provider].apiKey || "";
-        const localUrl = result.localUrl || defaults.local.localUrl;
+      chrome.storage.local.get(["provider", "model", "openaiApiKey", "anthropicApiKey", "localUrl", "localModels"], (result) => {
+        const currentProvider = result.provider || defaultProvider;
+        const currentModel = result.model || defaults[currentProvider].model;
         const localModels = result.localModels || models.local;
 
-        if ((provider === "openai" || provider === "anthropic") && apiKey) {
-          models[provider].forEach((m) => {
-            const option = document.createElement("option");
-            option.value = m;
-            option.textContent = `${provider}: ${m}`;
-            modelSelect.appendChild(option);
-          });
+        let availableModels = [];
+
+        if (result.openaiApiKey) {
+          availableModels = availableModels.concat(models.openai.map((model) => ({ provider: "openai", model })));
+        }
+        if (result.anthropicApiKey) {
+          availableModels = availableModels.concat(models.anthropic.map((model) => ({ provider: "anthropic", model })));
+        }
+        if (result.localUrl) {
+          availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
         }
 
-        if (provider === "local" && localUrl) {
-          localModels.forEach((m) => {
-            const option = document.createElement("option");
-            option.value = m;
-            option.textContent = `local: ${m}`;
-            modelSelect.appendChild(option);
-          });
+        availableModels.forEach(({ provider, model }) => {
+          const option = document.createElement("option");
+          option.value = JSON.stringify({ provider, model });
+          option.textContent = `${provider}: ${model}`;
+          modelSelect.appendChild(option);
+        });
+
+        // Set the current model
+        const currentModelOption = Array.from(modelSelect.options).find((option) => {
+          const { provider, model } = JSON.parse(option.value);
+          return provider === currentProvider && model === currentModel;
+        });
+
+        if (currentModelOption) {
+          modelSelect.value = currentModelOption.value;
         }
 
         const modelsAvailable = modelSelect.options.length > 0;
@@ -91,33 +113,51 @@ function initializeSettings() {
 
   addLocalModelButton.addEventListener("click", function () {
     const newModel = localModelInput.value.trim();
-    if (newModel && !models.local.includes(newModel)) {
-      models.local.push(newModel);
-      loadModels();
-      localModelInput.value = "";
-      chrome.storage.local.set({ localModels: models.local });
+    if (newModel) {
+      chrome.storage.local.get("localModels", (result) => {
+        const localModels = result.localModels || models.local;
+        if (!localModels.includes(newModel)) {
+          localModels.push(newModel);
+          chrome.storage.local.set({ localModels: localModels }, () => {
+            loadModels();
+            localModelInput.value = "";
+          });
+        }
+      });
     }
   });
 
   saveButton.addEventListener("click", function () {
-    // Update this part to use currentProvider instead of providerSelect.value
-    chrome.storage.local.set(
-      {
-        provider: currentProvider,
-        model: settingsModelSelect.value,
-        apiKey: apiKeyInput.value,
-        localUrl: localUrlInput.value,
-        localModels: models.local,
-      },
-      function () {
-        updateConfiguredModels().then((modelsAvailable) => {
-          if (!modelsAvailable) {
-            openSettings();
-          }
-        });
-        settingsModal.style.display = "none";
+    const newSettings = {
+      provider: currentProvider,
+      model: settingsModelSelect.value,
+      localUrl: localUrlInput.value,
+      localModels: models.local,
+    };
+
+    // Save API key for the current provider
+    if (currentProvider === "openai") {
+      newSettings.openaiApiKey = apiKeyInput.value;
+      newSettings.apiKey = apiKeyInput.value; // For backwards compatibility
+    } else if (currentProvider === "anthropic") {
+      newSettings.anthropicApiKey = apiKeyInput.value;
+    }
+
+    console.log("Saving settings:", newSettings); // Debugging line
+
+    chrome.storage.local.set(newSettings, function () {
+      if (chrome.runtime.lastError) {
+        console.error("Error saving settings:", chrome.runtime.lastError);
+      } else {
+        console.log("Settings saved successfully");
       }
-    );
+      updateConfiguredModels().then((modelsAvailable) => {
+        if (!modelsAvailable) {
+          openSettings();
+        }
+      });
+      settingsModal.style.display = "none";
+    });
   });
 
   settingsButton.addEventListener("click", () => {
@@ -129,32 +169,48 @@ function initializeSettings() {
   });
 
   // Load saved preferences
-  chrome.storage.local.get(["provider", "model", "apiKey", "localUrl", "localModels"], function (result) {
-    currentProvider = result.provider || "openai";
-    providerTabs.forEach((tab) => {
-      if (tab.dataset.provider === currentProvider) {
-        tab.classList.add("active");
+  chrome.storage.local.get(
+    ["provider", "model", "openaiApiKey", "anthropicApiKey", "apiKey", "localUrl", "localModels"],
+    function (result) {
+      console.log("Loaded preferences:", result); // Debugging line
+      currentProvider = result.provider || defaultProvider;
+      providerTabs.forEach((tab) => {
+        if (tab.dataset.provider === currentProvider) {
+          tab.classList.add("active");
+        } else {
+          tab.classList.remove("active");
+        }
+      });
+
+      // Set API key based on the current provider
+      if (currentProvider === "openai") {
+        apiKeyInput.value = result.openaiApiKey || result.apiKey || "";
+      } else if (currentProvider === "anthropic") {
+        apiKeyInput.value = result.anthropicApiKey || "";
+      }
+      console.log("Initial API Key set:", apiKeyInput.value); // Debugging line
+
+      toggleInputs(currentProvider);
+
+      if (result.localModels) {
+        models.local = result.localModels;
       } else {
-        tab.classList.remove("active");
+        // Initialize localModels if not present
+        chrome.storage.local.set({ localModels: models.local });
       }
-    });
-    toggleInputs(currentProvider);
+      loadModels();
 
-    if (result.localModels) {
-      models.local = result.localModels;
+      settingsModelSelect.value = result.model || defaults[currentProvider].model;
+
+      localUrlInput.value = result.localUrl || defaults.local.localUrl;
+
+      updateConfiguredModels().then((modelsAvailable) => {
+        if (!modelsAvailable) {
+          openSettings();
+        }
+      });
     }
-    loadModels();
-
-    settingsModelSelect.value = result.model || defaults[currentProvider].model;
-    apiKeyInput.value = result.apiKey || defaults[currentProvider].apiKey || "";
-    localUrlInput.value = result.localUrl || defaults.local.localUrl;
-
-    updateConfiguredModels().then((modelsAvailable) => {
-      if (!modelsAvailable) {
-        openSettings();
-      }
-    });
-  });
+  );
 
   return { updateConfiguredModels, openSettings };
 }

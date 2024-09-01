@@ -2,24 +2,20 @@ import { initializeSettings } from "./settings.js";
 import { models, defaults, defaultProvider } from "./config.js";
 
 // Move updateModelSelect outside of DOMContentLoaded
-function updateModelSelect(newModel) {
-  console.log("Updating model select to:", newModel);
+function updateModelSelect(newProvider, newModel) {
+  console.log(`Updating model select to: ${newProvider} - ${newModel}`);
   const modelSelect = document.getElementById("model-select");
   if (modelSelect) {
-    console.log(
-      "Model select options:",
-      Array.from(modelSelect.options).map((opt) => opt.value)
-    );
-    let found = false;
-    for (let i = 0; i < modelSelect.options.length; i++) {
-      if (modelSelect.options[i].value === newModel) {
-        modelSelect.selectedIndex = i;
-        found = true;
-        console.log("Model updated successfully to index:", i);
-        break;
-      }
-    }
-    if (!found) {
+    const options = Array.from(modelSelect.options);
+    const foundOption = options.find((option) => {
+      const { provider, model } = JSON.parse(option.value);
+      return provider === newProvider && model === newModel;
+    });
+
+    if (foundOption) {
+      modelSelect.value = foundOption.value;
+      console.log("Model updated successfully");
+    } else {
       console.error("Model not found in options:", newModel);
     }
   } else {
@@ -37,8 +33,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       userInput.innerHTML = message.text;
     }
   } else if (message.action === "modelChanged") {
-    console.log("Received modelChanged message:", message.model);
-    updateModelSelect(message.model);
+    console.log("Received modelChanged message:", message);
+    updateModelSelect(message.provider, message.model);
   } else if (message.action === "toggleSidebar") {
     toggleSidebar();
   } else if (message.action === "createNewChat") {
@@ -47,29 +43,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function initializeModelSelect() {
-  chrome.storage.local.get(["provider", "model", "apiKey", "localUrl", "localModels"], (result) => {
-    const provider = result.provider || defaultProvider;
-    const currentModel = result.model || defaults[provider].model;
+  chrome.storage.local.get(["provider", "model", "openaiApiKey", "anthropicApiKey", "localUrl", "localModels"], (result) => {
+    console.log("Storage data:", result);
+
+    const currentModel = result.model || defaults[result.provider || defaultProvider].model;
     const localModels = result.localModels || models.local;
 
     const modelSelect = document.getElementById("model-select");
     modelSelect.innerHTML = "";
 
-    let availableModels = models[provider];
-    if (provider === "local") {
-      availableModels = localModels;
+    let availableModels = [];
+
+    // Add OpenAI models if API key exists
+    if (result.openaiApiKey) {
+      availableModels = availableModels.concat(models.openai.map((model) => ({ provider: "openai", model })));
     }
 
-    availableModels.forEach((model) => {
+    // Add Anthropic models if API key exists
+    if (result.anthropicApiKey) {
+      availableModels = availableModels.concat(models.anthropic.map((model) => ({ provider: "anthropic", model })));
+    }
+
+    // Add local models if local URL exists
+    if (result.localUrl) {
+      availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
+    }
+
+    console.log("Available models:", availableModels);
+
+    availableModels.forEach(({ provider, model }) => {
       const option = document.createElement("option");
-      option.value = model;
+      option.value = JSON.stringify({ provider, model });
       option.textContent = `${provider}: ${model}`;
       modelSelect.appendChild(option);
     });
 
-    if (currentModel) {
-      updateModelSelect(currentModel);
+    // Set the current model
+    const currentModelOption = Array.from(modelSelect.options).find((option) => {
+      const { model } = JSON.parse(option.value);
+      return model === currentModel;
+    });
+
+    if (currentModelOption) {
+      modelSelect.value = currentModelOption.value;
     }
+
+    console.log(
+      "Model select options:",
+      Array.from(modelSelect.options).map((opt) => opt.value)
+    );
+    console.log("Current model:", currentModel);
   });
 }
 
@@ -108,15 +131,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   modelSelect.addEventListener("change", function () {
-    chrome.storage.local.set({ model: this.value });
+    const { provider, model } = JSON.parse(this.value);
+    chrome.storage.local.set({ provider, model }, () => {
+      console.log(`Model changed to ${provider}: ${model}`);
+    });
   });
 
   const { updateConfiguredModels, openSettings } = initializeSettings();
 
   // Listen for storage changes
   chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === "local" && (changes.provider || changes.model || changes.apiKey || changes.localUrl || changes.localModels)) {
-      updateConfiguredModels();
+    if (
+      namespace === "local" &&
+      (changes.provider || changes.model || changes.openaiApiKey || changes.anthropicApiKey || changes.localUrl || changes.localModels)
+    ) {
+      initializeModelSelect();
     }
   });
 
@@ -843,6 +872,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initializeModelSelect();
 
+  // Add a listener for provider changes
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === "local" && (changes.provider || changes.localModels)) {
+      initializeModelSelect();
+    }
+  });
+
   // Add this to your existing chrome.runtime.onMessage listener
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "closeSidebar") {
@@ -853,8 +889,8 @@ document.addEventListener("DOMContentLoaded", () => {
         userInput.innerHTML = message.text;
       }
     } else if (message.action === "modelChanged") {
-      console.log("Received modelChanged message:", message.model);
-      updateModelSelect(message.model);
+      console.log("Received modelChanged message:", message);
+      updateModelSelect(message.provider, message.model);
     } else if (message.action === "toggleSidebar") {
       toggleSidebar();
     } else if (message.action === "createNewChat") {
@@ -878,5 +914,7 @@ document.addEventListener("DOMContentLoaded", () => {
       createNewChat();
       toggleSidebar();
     });
+
+    initializeModelSelect();
   });
 });

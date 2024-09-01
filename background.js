@@ -3,6 +3,48 @@ import { models, defaults, defaultProvider } from "./config.js";
 let sidePanelOpen = false;
 let currentSelectedText = "";
 let currentModelIndex = 0;
+let availableModels = [];
+
+function updateAvailableModels() {
+  chrome.storage.local.get(["openaiApiKey", "anthropicApiKey", "localUrl", "localModels"], (result) => {
+    availableModels = [];
+    if (result.openaiApiKey) {
+      availableModels = availableModels.concat(models.openai.map((model) => ({ provider: "openai", model })));
+    }
+    if (result.anthropicApiKey) {
+      availableModels = availableModels.concat(models.anthropic.map((model) => ({ provider: "anthropic", model })));
+    }
+    if (result.localUrl) {
+      const localModels = result.localModels || models.local;
+      availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
+    }
+  });
+}
+
+function toggleModel() {
+  if (availableModels.length === 0) {
+    console.log("No models available");
+    return;
+  }
+
+  currentModelIndex = (currentModelIndex + 1) % availableModels.length;
+  const { provider, model } = availableModels[currentModelIndex];
+
+  chrome.storage.local.set({ provider, model }, () => {
+    console.log(`Model switched to: ${provider} - ${model}`);
+    chrome.runtime.sendMessage({ action: "modelChanged", provider, model });
+  });
+}
+
+// Update available models when the extension is loaded
+updateAvailableModels();
+
+// Listen for changes in storage that might affect available models
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === "local" && (changes.openaiApiKey || changes.anthropicApiKey || changes.localUrl || changes.localModels)) {
+    updateAvailableModels();
+  }
+});
 
 // Add this near the top of the file
 chrome.commands.onCommand.addListener((command) => {
@@ -273,31 +315,5 @@ function getCurrentTabUrl(callback) {
     } else {
       callback(null);
     }
-  });
-}
-
-// Modify the toggleModel function in background.js
-function toggleModel() {
-  chrome.storage.local.get(["provider", "localModels"], (result) => {
-    const provider = result.provider || defaultProvider;
-    let availableModels = models[provider];
-
-    if (provider === "local" && result.localModels && result.localModels.length > 0) {
-      availableModels = result.localModels;
-    }
-
-    if (availableModels.length === 0) {
-      console.log("No models available for the current provider");
-      return;
-    }
-
-    currentModelIndex = (currentModelIndex + 1) % availableModels.length;
-    const newModel = availableModels[currentModelIndex];
-
-    chrome.storage.local.set({ model: newModel }, () => {
-      console.log(`Model switched to: ${newModel}`);
-      // Notify the sidepanel about the model change
-      chrome.runtime.sendMessage({ action: "modelChanged", model: newModel });
-    });
   });
 }
