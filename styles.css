@@ -560,3 +560,17 @@ body.sidebar-collapsed #sidebar-toggle {
 body.sidebar-collapsed #collapsed-sidebar {
   display: flex;
 }
+
+#shortcuts-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+#shortcuts-list li {
+  margin-bottom: 10px;
+}
+
+#shortcuts-list strong {
+  display: inline-block;
+  width: 150px;
+}

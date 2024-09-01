@@ -31,14 +31,25 @@ function initializeSettings() {
   }
 
   function toggleInputs(provider) {
+    const modelGroup = document.getElementById("model-group");
     if (provider === "local") {
       apiKeyGroup.style.display = "none";
       localUrlGroup.style.display = "block";
       localModelGroup.style.display = "block";
+      document.getElementById("shortcuts-content").style.display = "none";
+      modelGroup.style.display = "block";
+    } else if (provider === "shortcuts") {
+      apiKeyGroup.style.display = "none";
+      localUrlGroup.style.display = "none";
+      localModelGroup.style.display = "none";
+      document.getElementById("shortcuts-content").style.display = "block";
+      modelGroup.style.display = "none"; // Hide the model dropdown for shortcuts
     } else {
       apiKeyGroup.style.display = "block";
       localUrlGroup.style.display = "none";
       localModelGroup.style.display = "none";
+      document.getElementById("shortcuts-content").style.display = "none";
+      modelGroup.style.display = "block";
     }
 
     // Load the appropriate API key
