@@ -43,13 +43,13 @@ function initializeSettings() {
 
     // Load the appropriate API key
     chrome.storage.local.get(["openaiApiKey", "anthropicApiKey", "apiKey"], (result) => {
-      console.log("Stored API keys:", result); // Debugging line
+      // Debugging line
       if (provider === "openai") {
         apiKeyInput.value = result.openaiApiKey || result.apiKey || "";
       } else if (provider === "anthropic") {
         apiKeyInput.value = result.anthropicApiKey || "";
       }
-      console.log("Current provider:", provider, "API Key:", apiKeyInput.value); // Debugging line
+      // Debugging line
     });
   }
 
@@ -143,13 +143,12 @@ function initializeSettings() {
       newSettings.anthropicApiKey = apiKeyInput.value;
     }
 
-    console.log("Saving settings:", newSettings); // Debugging line
+    // Debugging line
 
     chrome.storage.local.set(newSettings, function () {
       if (chrome.runtime.lastError) {
         console.error("Error saving settings:", chrome.runtime.lastError);
       } else {
-        console.log("Settings saved successfully");
       }
       updateConfiguredModels().then((modelsAvailable) => {
         if (!modelsAvailable) {
@@ -172,7 +171,7 @@ function initializeSettings() {
   chrome.storage.local.get(
     ["provider", "model", "openaiApiKey", "anthropicApiKey", "apiKey", "localUrl", "localModels"],
     function (result) {
-      console.log("Loaded preferences:", result); // Debugging line
+      // Debugging line
       currentProvider = result.provider || defaultProvider;
       providerTabs.forEach((tab) => {
         if (tab.dataset.provider === currentProvider) {
@@ -188,7 +187,7 @@ function initializeSettings() {
       } else if (currentProvider === "anthropic") {
         apiKeyInput.value = result.anthropicApiKey || "";
       }
-      console.log("Initial API Key set:", apiKeyInput.value); // Debugging line
+      // Debugging line
 
       toggleInputs(currentProvider);
 

@@ -23,7 +23,6 @@ function updateAvailableModels() {
 
 function toggleModel() {
   if (availableModels.length === 0) {
-    console.log("No models available");
     return;
   }
 
@@ -31,7 +30,6 @@ function toggleModel() {
   const { provider, model } = availableModels[currentModelIndex];
 
   chrome.storage.local.set({ provider, model }, () => {
-    console.log(`Model switched to: ${provider} - ${model}`);
     chrome.runtime.sendMessage({ action: "modelChanged", provider, model });
   });
 }
@@ -119,11 +117,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 chrome.runtime.onConnect.addListener(function (port) {
   if (port.name === "mySidepanel") {
-    console.log("Side panel opened");
     sidePanelOpen = true;
 
     port.onDisconnect.addListener(() => {
-      console.log("Side panel closed");
       sidePanelOpen = false;
       currentSelectedText = ""; // Clear the selected text when panel is closed
     });
@@ -203,7 +199,6 @@ async function handleLocalStream(messages, model, _, localUrl) {
 
     return fullResponse;
   } catch (error) {
-    console.log(error);
     const errorMessage =
       "An error occurred while communicating with the local model: " +
       error.message +
@@ -304,9 +299,7 @@ async function handleOpenAIStream(messages, model, apiKey) {
   return fullResponse;
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("GPT Chat Assistant installed or updated");
-});
+chrome.runtime.onInstalled.addListener(() => {});
 
 function getCurrentTabUrl(callback) {
   chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {

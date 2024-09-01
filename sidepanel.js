@@ -3,7 +3,6 @@ import { models, defaults, defaultProvider } from "./config.js";
 
 // Move updateModelSelect outside of DOMContentLoaded
 function updateModelSelect(newProvider, newModel) {
-  console.log(`Updating model select to: ${newProvider} - ${newModel}`);
   const modelSelect = document.getElementById("model-select");
   if (modelSelect) {
     const options = Array.from(modelSelect.options);
@@ -14,7 +13,6 @@ function updateModelSelect(newProvider, newModel) {
 
     if (foundOption) {
       modelSelect.value = foundOption.value;
-      console.log("Model updated successfully");
     } else {
       console.error("Model not found in options:", newModel);
     }
@@ -33,7 +31,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       userInput.innerHTML = message.text;
     }
   } else if (message.action === "modelChanged") {
-    console.log("Received modelChanged message:", message);
     updateModelSelect(message.provider, message.model);
   } else if (message.action === "toggleSidebar") {
     toggleSidebar();
@@ -44,8 +41,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 function initializeModelSelect() {
   chrome.storage.local.get(["provider", "model", "openaiApiKey", "anthropicApiKey", "localUrl", "localModels"], (result) => {
-    console.log("Storage data:", result);
-
     const currentModel = result.model || defaults[result.provider || defaultProvider].model;
     const localModels = result.localModels || models.local;
 
@@ -69,8 +64,6 @@ function initializeModelSelect() {
       availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
     }
 
-    console.log("Available models:", availableModels);
-
     availableModels.forEach(({ provider, model }) => {
       const option = document.createElement("option");
       option.value = JSON.stringify({ provider, model });
@@ -92,7 +85,6 @@ function initializeModelSelect() {
       "Model select options:",
       Array.from(modelSelect.options).map((opt) => opt.value)
     );
-    console.log("Current model:", currentModel);
   });
 }
 
@@ -132,9 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   modelSelect.addEventListener("change", function () {
     const { provider, model } = JSON.parse(this.value);
-    chrome.storage.local.set({ provider, model }, () => {
-      console.log(`Model changed to ${provider}: ${model}`);
-    });
+    chrome.storage.local.set({ provider, model }, () => {});
   });
 
   const { updateConfiguredModels, openSettings } = initializeSettings();
@@ -172,7 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   initDatabase()
     .then(() => {
-      console.log("Database initialized successfully");
       return loadChatHistory();
     })
     .then(() => {
@@ -203,7 +192,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!currentChatId) {
         try {
           await createNewChat();
-          console.log("New chat created, currentChatId:", currentChatId);
         } catch (error) {
           console.error("Error creating new chat:", error);
           return;
@@ -214,7 +202,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function proceedWithSendMessage(message) {
-    console.log("Sending message:", message);
     const timestamp = Date.now();
     let chatData;
 
@@ -266,7 +253,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       })
       .then(() => {
-        console.log("User message saved to DB");
         return new Promise((resolve, reject) => {
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
@@ -289,9 +275,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       })
       .then(({ pageContent, selectedText }) => {
-        console.log("Current page content:", pageContent);
-        console.log("Selected text:", selectedText);
-
         // Get the last 10 messages for context
         const lastMessages = chatData.messages
           .filter((msg) => msg.type === "message")
@@ -330,8 +313,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return sendToGPT(messages, aiMessageElement);
       })
       .then((response) => {
-        console.log("GPT response received:", response);
-
         // Update the AI message in chatData
         const aiMessage = chatData.messages[chatData.messages.length - 1];
         aiMessage.message = response;
@@ -345,9 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
           putRequest.onerror = (error) => reject(error);
         });
       })
-      .then(() => {
-        console.log("AI response saved to DB");
-      })
+      .then(() => {})
       .catch((error) => {
         console.error("Error in sendMessage:", error);
         addMessageToChat("system", "An error occurred. Please try again.", Date.now());
@@ -507,7 +486,6 @@ document.addEventListener("DOMContentLoaded", () => {
       await new Promise((resolve, reject) => {
         const addRequest = store.add(newChat);
         addRequest.onsuccess = () => {
-          console.log("New chat created successfully");
           updateSelectedChat(currentChatId);
           resolve();
         };
@@ -519,8 +497,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       await loadChatHistory();
       await loadChat(currentChatId);
-
-      console.log("New chat created with URL:", url);
     } catch (error) {
       console.error("Error in createNewChat:", error);
       throw error;
@@ -586,7 +562,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      console.log("Loading chat:", chatId);
       currentChatId = chatId;
       chatMessages.innerHTML = "";
 
@@ -596,9 +571,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       request.onsuccess = (event) => {
         const chatData = event.target.result;
-        console.log("Chat data:", chatData);
+
         if (!chatData) {
-          console.log("No chat data found for chatId:", chatId);
           resolve();
           return;
         }
@@ -762,7 +736,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const request = store.delete(chatId);
 
     request.onsuccess = () => {
-      console.log("Chat deleted successfully");
       loadChatHistory();
       if (currentChatId === chatId) {
         loadMostRecentChat();
@@ -863,7 +836,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Add this function to handle cleanup when the panel is closed
   function handlePanelClose() {
     // Perform any necessary cleanup here
-    console.log("Side panel is being closed");
     // For example, you might want to save the current state or clear some data
   }
 
@@ -889,7 +861,6 @@ document.addEventListener("DOMContentLoaded", () => {
         userInput.innerHTML = message.text;
       }
     } else if (message.action === "modelChanged") {
-      console.log("Received modelChanged message:", message);
       updateModelSelect(message.provider, message.model);
     } else if (message.action === "toggleSidebar") {
       toggleSidebar();

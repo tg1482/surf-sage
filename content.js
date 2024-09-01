@@ -67,5 +67,3 @@ function checkSelection() {
 
 // Check selection every 500ms
 setInterval(checkSelection, 500);
-
-console.log("Content script loaded");
