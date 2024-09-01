@@ -479,6 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const addRequest = store.add(newChat);
         addRequest.onsuccess = () => {
           console.log("New chat created successfully");
+          updateSelectedChat(currentChatId);
           resolve();
         };
         addRequest.onerror = (error) => {
@@ -488,7 +489,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       await loadChatHistory();
-      updateSelectedChat(currentChatId);
       await loadChat(currentChatId);
 
       console.log("New chat created with URL:", url);
@@ -630,7 +630,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateSelectedChat(chatId) {
     const chatItems = document.querySelectorAll(".chat-item");
     chatItems.forEach((item) => {
-      if (item.dataset.chatId == chatId) {
+      if (item.dataset.chatId === chatId) {
         item.classList.add("selected");
       } else {
         item.classList.remove("selected");
@@ -653,7 +653,12 @@ document.addEventListener("DOMContentLoaded", () => {
       request.onsuccess = (event) => {
         const cursor = event.target.result;
         if (cursor) {
-          loadChat(cursor.value.chatId).then(resolve).catch(reject);
+          loadChat(cursor.value.chatId)
+            .then(() => {
+              updateSelectedChat(cursor.value.chatId);
+              resolve();
+            })
+            .catch(reject);
         } else {
           createNewChat().then(resolve).catch(reject);
         }
@@ -694,13 +699,50 @@ document.addEventListener("DOMContentLoaded", () => {
     const lastMessage = chatData.messages.findLast((msg) => msg.type === "message")?.message || "New chat";
 
     chatItem.innerHTML = `
-      <div>${timeAgo}</div>
-      <div title="${domainText}">${domainText}</div>
-      <div title="${lastMessage}">${lastMessage.substring(0, 30)}${lastMessage.length > 30 ? "..." : ""}</div>
+      <div class="chat-item-header">
+        <span class="chat-item-time">${timeAgo}</span>
+        <button class="delete-chat-button" title="Delete chat">🗑️</button>
+      </div>
+      <div class="chat-item-domain" title="${domainText}">${domainText}</div>
+      <div class="chat-item-message" title="${lastMessage}">${lastMessage.substring(0, 30)}${lastMessage.length > 30 ? "..." : ""}</div>
     `;
 
-    chatItem.addEventListener("click", () => loadChat(chatData.chatId));
+    chatItem.addEventListener("click", (e) => {
+      if (!e.target.classList.contains("delete-chat-button")) {
+        loadChat(chatData.chatId);
+      }
+    });
+
+    const deleteButton = chatItem.querySelector(".delete-chat-button");
+    deleteButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteChat(chatData.chatId);
+    });
+
     return chatItem;
+  }
+
+  function deleteChat(chatId) {
+    if (!db) {
+      console.error("Database not initialized");
+      return;
+    }
+
+    const transaction = db.transaction(["chats"], "readwrite");
+    const store = transaction.objectStore("chats");
+    const request = store.delete(chatId);
+
+    request.onsuccess = () => {
+      console.log("Chat deleted successfully");
+      loadChatHistory();
+      if (currentChatId === chatId) {
+        loadMostRecentChat();
+      }
+    };
+
+    request.onerror = (event) => {
+      console.error("Error deleting chat:", event.target.error);
+    };
   }
 
   function setInputAsQuote(text) {
