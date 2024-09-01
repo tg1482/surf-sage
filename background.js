@@ -1,6 +1,5 @@
 import { models, defaults, defaultProvider } from "./config.js";
 
-// background.js
 let sidePanelOpen = false;
 let currentSelectedText = "";
 let currentModelIndex = 0;
@@ -227,30 +226,33 @@ async function handleOpenAIStream(messages, model, apiKey) {
 
   const reader = response.body.getReader();
   let fullResponse = "";
+  let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    const chunk = new TextDecoder().decode(value);
-    const lines = chunk.split("\n").filter((line) => line.trim() !== "");
+    buffer += new TextDecoder().decode(value);
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
 
     for (const line of lines) {
       if (line.startsWith("data: ")) {
-        if (line.includes("[DONE]")) {
-          // Stream has ended
+        const data = line.slice(6);
+        if (data.trim() === "[DONE]") {
           chrome.runtime.sendMessage({ action: "streamEnd" });
           return fullResponse;
         }
         try {
-          const data = JSON.parse(line.slice(6));
-          if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
-            const content = data.choices[0].delta.content;
+          const parsedData = JSON.parse(data);
+          if (parsedData.choices && parsedData.choices[0].delta && parsedData.choices[0].delta.content) {
+            const content = parsedData.choices[0].delta.content;
             fullResponse += content;
             chrome.runtime.sendMessage({ action: "streamResponse", content });
           }
         } catch (error) {
-          console.error("Error parsing JSON:", error);
+          console.warn("Error parsing JSON:", error, "Raw data:", data);
+          // Continue processing other lines
         }
       }
     }
