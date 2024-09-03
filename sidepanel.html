@@ -10,15 +10,15 @@
     <div id="sidebar" class="expanded">
       <div id="sidebar-header">
         <button id="new-chat-button">New Chat</button>
-        <button id="minimize-button"><<</button>
+        <button id="minimize-button">&lt;&lt;</button>
       </div>
       <div id="chat-history"></div>
-      <button id="settings-button">⚙️ Settings</button>
+      <button id="settings-button">[S] Settings</button>
     </div>
     <div id="chat-container">
       <div id="chat-messages"></div>
       <div id="input-area">
-        <div id="user-input" contenteditable="true" placeholder="Type your message..."></div>
+        <div id="user-input" contenteditable="true" data-placeholder="Enter your query, human..."></div>
         <div id="controls">
           <select id="model-select"></select>
           <button id="send-button">Send</button>
@@ -26,7 +26,7 @@
       </div>
     </div>
     <div id="collapsed-sidebar">
-      <button id="expand-sidebar-button">>></button>
+      <button id="expand-sidebar-button">&gt;&gt;</button>
       <button id="new-chat-button-collapsed">+</button>
     </div>
     <div id="settings-modal" class="modal">

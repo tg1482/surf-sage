@@ -1,10 +1,11 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: "VT323", "Courier New", monospace;
   margin: 0;
   padding: 0;
   display: flex;
   height: 100vh;
-  background-color: #f0f0f0;
+  background-color: #001933;
+  color: #00ff00;
   transition: margin-left 0.3s ease;
 }
 
@@ -14,8 +15,8 @@ body.sidebar-collapsed {
 
 #sidebar {
   width: 200px;
-  background-color: #2c3e50;
-  color: white;
+  background-color: #002b4d;
+  color: #00ff00;
   padding: 20px;
   overflow-y: auto;
   transition: width 0.3s ease;
@@ -42,15 +43,16 @@ body.sidebar-collapsed {
   margin-right: 10px;
   width: 100%;
   padding: 10px;
-  background-color: #3498db;
-  color: white;
+  background-color: #00ff00;
+  color: #000000;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: bold;
 }
 
 #new-chat-button:hover {
-  background-color: #2980b9;
+  background-color: #00cc00;
 }
 
 #minimize-button,
@@ -58,38 +60,36 @@ body.sidebar-collapsed {
 #new-chat-button-collapsed {
   width: 30px;
   height: 30px;
-  background-color: #34495e;
-  color: white;
+  background-color: #00ff00;
+  color: #000000;
   border: none;
-  border-radius: 50%;
   cursor: pointer;
   font-size: 14px;
   display: flex;
   justify-content: center;
   align-items: center;
   margin: 5px 0 10px;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: bold;
 }
 
 #minimize-button:hover,
 #expand-sidebar-button:hover,
 #new-chat-button-collapsed:hover {
-  background-color: #2c3e50;
-}
-
-#new-chat-button-collapsed {
-  background-color: #3498db;
+  background-color: #00cc00;
 }
 
 #settings-button {
   margin-top: auto;
   padding: 10px;
-  background-color: #34495e;
-  color: white;
+  background-color: #00ff00;
+  color: #000000;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
   font-size: 14px;
   text-align: left;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: bold;
 }
 
 #chat-history {
@@ -103,15 +103,16 @@ body.sidebar-collapsed {
   flex-direction: column;
   padding: 10px;
   cursor: pointer;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #00ff00;
 }
 
 .chat-item.selected {
-  background-color: #34495e;
+  background-color: #004080;
+  color: #00ff00;
 }
 
 .chat-item:hover:not(.selected) {
-  background-color: #2c3e50;
+  background-color: #003366;
 }
 
 .chat-item-header {
@@ -123,7 +124,7 @@ body.sidebar-collapsed {
 
 .chat-item-time {
   font-size: 0.8em;
-  color: #bdc3c7;
+  color: #00cc00;
 }
 
 .delete-chat-button {
@@ -134,6 +135,8 @@ body.sidebar-collapsed {
   padding: 0;
   opacity: 0.7;
   transition: opacity 0.2s;
+  color: #ff3333;
+  font-family: "VT323", "Courier New", monospace;
 }
 
 .delete-chat-button:hover {
@@ -142,7 +145,7 @@ body.sidebar-collapsed {
 
 .chat-item-domain {
   font-weight: bold;
-  color: #3498db;
+  color: #33ccff;
   margin-bottom: 5px;
   white-space: nowrap;
   overflow: hidden;
@@ -151,22 +154,20 @@ body.sidebar-collapsed {
 
 .chat-item-message {
   font-size: 0.9em;
-  color: #ecf0f1;
+  color: #00cc00;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.chat-item:hover {
-  background-color: #34495e;
 }
 
 #chat-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: white;
+  background-color: #001933;
   transition: margin-left 0.3s ease;
+  border-left: 1px solid #00ff00;
+  overflow-y: auto;
 }
 
 body.sidebar-collapsed #chat-container {
@@ -176,34 +177,40 @@ body.sidebar-collapsed #chat-container {
 #chat-messages {
   flex: 1;
   padding: 20px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: visible;
 }
 
 .message {
   max-width: 70%;
   padding: 10px;
-  border-radius: 10px;
+  border: 1px solid #00ff00;
+  overflow: visible;
+  position: relative; /* Add this line to ensure proper positioning of the copy button */
+}
+
+.message-content {
+  overflow: visible;
 }
 
 .user {
   align-self: flex-end;
-  background-color: #3498db;
-  color: white;
+  background-color: #002b4d;
+  color: #00ff00;
 }
 
 .ai {
   align-self: flex-start;
-  background-color: #ecf0f1;
-  color: #2c3e50;
+  background-color: #001933;
+  color: #00ff00;
 }
 
 #input-area {
   padding: 10px;
-  border-top: 1px solid #ecf0f1;
-  background-color: #f8f9fa;
+  border-top: 1px solid #00ff00;
+  background-color: #001933;
 }
 
 #controls {
@@ -217,87 +224,84 @@ body.sidebar-collapsed #chat-container {
   max-width: 150px;
   font-size: 12px;
   padding: 4px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
+  border: 1px solid #00ff00;
+  background-color: #002b4d;
+  color: #00ff00;
+  font-family: "VT323", "Courier New", monospace;
 }
 
 #user-input {
-  width: 100%;
+  width: calc(100% - 16px);
   min-height: 60px;
   max-height: 200px;
   padding: 8px;
   margin-bottom: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #00ff00;
   font-size: 14px;
   line-height: 1.5;
   overflow-y: auto;
-  background-color: white;
+  background-color: #002b4d;
+  color: #00ff00;
+  font-family: "VT323", "Courier New", monospace;
+  box-sizing: border-box;
+}
+
+#user-input:empty::before {
+  content: attr(data-placeholder);
+  color: #006600;
+  opacity: 0.7;
 }
 
 #user-input:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #00cc00;
 }
 
-#user-input::placeholder {
-  color: #bdc3c7;
-}
-
-#user-input > :first-child {
-  margin-top: 0;
-}
-
-#user-input > :last-child {
-  margin-bottom: 0;
+#user-input:focus:empty::before {
+  content: "";
 }
 
 #user-input blockquote {
-  border-left: 3px solid #3498db;
+  border-left: 3px solid #00ff00;
   margin: 0 0 10px 0;
   padding: 5px 10px;
-  color: #34495e;
-  background-color: #f8f9fa;
+  color: #00cc00;
+  background-color: #002b4d;
   font-style: italic;
-}
-
-#user-input p {
-  margin: 0;
-  min-height: 1em;
 }
 
 #send-button {
   padding: 8px 12px;
-  background-color: #4a90e2;
-  color: white;
+  background-color: #00ff00;
+  color: #000000;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: bold;
 }
 
 #send-button:hover {
-  background-color: #3a7bc8;
+  background-color: #00cc00;
 }
 
 #send-button:active {
-  background-color: #2a6db8;
+  background-color: #009900;
 }
 
 .chat-url {
   padding: 10px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
+  background-color: #002b4d;
+  border-bottom: 1px solid #00ff00;
   font-size: 0.9em;
   word-break: break-all;
   text-align: center;
   margin: 5px 0;
-  color: #7f8c8d;
+  color: #00cc00;
 }
 
 .chat-url a {
-  color: #3498db;
+  color: #33ccff;
   text-decoration: none;
 }
 
@@ -309,12 +313,12 @@ body.sidebar-collapsed #chat-container {
   text-align: center;
   margin: 10px 0;
   font-weight: bold;
-  color: #7f8c8d;
+  color: #00cc00;
 }
 
 .chat-time {
   font-size: 0.8em;
-  color: #95a5a6;
+  color: #009900;
   margin-right: 5px;
 }
 
@@ -326,6 +330,7 @@ body.sidebar-collapsed #chat-container {
 /* Markdown styles */
 .message-content {
   line-height: 1.6;
+  overflow: visible;
 }
 
 .message-content h1,
@@ -336,6 +341,7 @@ body.sidebar-collapsed #chat-container {
 .message-content h6 {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
+  color: #33ccff;
 }
 
 .message-content p {
@@ -349,40 +355,47 @@ body.sidebar-collapsed #chat-container {
 }
 
 .message-content blockquote {
-  border-left: 3px solid #3498db;
+  border-left: 3px solid #00ff00;
   margin: 0 0 1em 0;
   padding: 0.5em 1em;
-  background-color: rgba(52, 152, 219, 0.1);
+  background-color: #002b4d;
   font-style: italic;
 }
 
 .message-content pre {
-  background-color: #f8f9fa;
+  background-color: #002b4d;
   padding: 1em;
-  border-radius: 4px;
+  border: 1px solid #00ff00;
   overflow-x: auto;
+  margin: 0.5em 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.message-content pre code {
+  display: block;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-x: auto;
+  width: 100%;
 }
 
 .message-content code {
-  background-color: #f8f9fa;
+  background-color: #002b4d;
+  font-family: "VT323", "Courier New", monospace;
+}
+
+.message-content p code {
   padding: 0.2em 0.4em;
-  border-radius: 3px;
-  font-family: monospace;
+  border: 1px solid #00ff00;
 }
 
 .message-content img {
   max-width: 100%;
   height: auto;
-}
-
-.message.user .message-content blockquote {
-  border-left-color: #e4dada;
-  background-color: rgba(228, 218, 218, 0.1);
-}
-
-.message.ai .message-content blockquote {
-  border-left-color: #2ecc71;
-  background-color: rgba(46, 204, 113, 0.1);
+  border: 1px solid #00ff00;
 }
 
 .modal {
@@ -394,25 +407,23 @@ body.sidebar-collapsed #chat-container {
   width: 100%;
   height: 100%;
   overflow: auto;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
 /* Styles for the settings modal */
 .modal-content {
-  background-color: #ffffff;
+  background-color: #001933;
   margin: 15% auto;
   padding: 20px;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid #00ff00;
   width: 80%;
   max-width: 400px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .modal-content h2 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #333;
+  color: #33ccff;
   font-size: 18px;
   text-align: center;
 }
@@ -424,7 +435,7 @@ body.sidebar-collapsed #chat-container {
 .form-group label {
   display: block;
   margin-bottom: 5px;
-  color: #666;
+  color: #00cc00;
   font-size: 14px;
 }
 
@@ -432,17 +443,18 @@ body.sidebar-collapsed #chat-container {
 .form-group input {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid #00ff00;
   font-size: 14px;
   box-sizing: border-box;
+  background-color: #002b4d;
+  color: #00ff00;
+  font-family: "VT323", "Courier New", monospace;
 }
 
 .form-group select:focus,
 .form-group input:focus {
   outline: none;
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+  border-color: #00cc00;
 }
 
 #save-button,
@@ -450,32 +462,33 @@ body.sidebar-collapsed #chat-container {
   width: 100%;
   padding: 10px;
   margin-top: 10px;
-  background-color: #4a90e2;
-  color: white;
+  background-color: #00ff00;
+  color: #000000;
   border: none;
-  border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: bold;
 }
 
 #save-button:hover,
 #close-settings:hover {
-  background-color: #3a7bc8;
+  background-color: #00cc00;
 }
 
 #save-button:active,
 #close-settings:active {
-  background-color: #2a6db8;
+  background-color: #009900;
 }
 
 #close-settings {
-  background-color: #e0e0e0;
-  color: #333;
+  background-color: #002b4d;
+  color: #00ff00;
 }
 
 #close-settings:hover {
-  background-color: #d0d0d0;
+  background-color: #003366;
 }
 
 .provider-tabs {
@@ -487,19 +500,21 @@ body.sidebar-collapsed #chat-container {
 .provider-tab {
   flex: 1;
   padding: 10px;
-  background-color: #f0f0f0;
-  border: none;
+  background-color: #002b4d;
+  border: 1px solid #00ff00;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  color: #00ff00;
+  font-family: "VT323", "Courier New", monospace;
 }
 
 .provider-tab:hover {
-  background-color: #e0e0e0;
+  background-color: #003366;
 }
 
 .provider-tab.active {
-  background-color: #4a90e2;
-  color: white;
+  background-color: #004080;
+  color: #00ff00;
 }
 
 .input-group {
@@ -513,52 +528,17 @@ body.sidebar-collapsed #chat-container {
 
 #add-local-model {
   padding: 8px 12px;
-  background-color: #4a90e2;
-  color: white;
+  background-color: #0f0;
+  color: #000;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
 }
 
 #add-local-model:hover {
-  background-color: #3a7bc8;
-}
-
-#sidebar-toggle {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
-  cursor: pointer;
-  font-size: 20px;
-}
-
-body.sidebar-collapsed #new-chat-button-collapsed {
-  display: block;
-}
-
-body.sidebar-collapsed #sidebar-toggle {
-  display: none;
-}
-
-#collapsed-sidebar {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 40px;
-  height: 100%;
-  background-color: #2c3e50;
-  z-index: 1000;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding-top: 10px;
-}
-
-body.sidebar-collapsed #collapsed-sidebar {
-  display: flex;
+  background-color: #0a0;
 }
 
 #shortcuts-list {
@@ -573,4 +553,83 @@ body.sidebar-collapsed #collapsed-sidebar {
 #shortcuts-list strong {
   display: inline-block;
   width: 150px;
+  color: #0f0;
+}
+
+#collapsed-sidebar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 100vh;
+  background-color: #002b4d;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+}
+
+body.sidebar-collapsed #collapsed-sidebar {
+  display: flex;
+}
+
+#expand-sidebar-button,
+#new-chat-button-collapsed {
+  width: 30px;
+  height: 30px;
+  background-color: #00ff00;
+  color: #000000;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 5px 0;
+  font-family: "VT323", "Courier New", monospace;
+  font-weight: bold;
+}
+
+#expand-sidebar-button:hover,
+#new-chat-button-collapsed:hover {
+  background-color: #00cc00;
+}
+
+body.sidebar-collapsed #chat-container {
+  margin-left: 40px;
+}
+
+/* Add these new styles */
+.copy-button,
+.message-copy-button {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #00ff00;
+  color: #000000;
+  border: none;
+  padding: 2px 5px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: "VT323", "Courier New", monospace;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  width: 18px; /* Adjust as needed to fit "C" */
+  white-space: nowrap;
+}
+
+.copy-button:hover,
+.message-copy-button:hover {
+  background-color: #00cc00;
+  width: 45px; /* Adjust as needed to fit "Copy" */
+}
+
+.copy-button::before,
+.message-copy-button::before {
+  content: "C";
+}
+
+.copy-button:hover::before,
+.message-copy-button:hover::before {
+  content: "Copy";
 }

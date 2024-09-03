@@ -434,7 +434,54 @@ document.addEventListener("DOMContentLoaded", () => {
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
+    // Add copy buttons to code blocks
+    addCopyButtonToCodeBlocks(messageContent);
+
+    // Add copy button to AI messages
+    if (sender === "ai") {
+      addCopyButtonToMessage(messageElement, message);
+    }
+
     return messageElement;
+  }
+
+  function addCopyButtonToCodeBlocks(container) {
+    const codeBlocks = container.querySelectorAll("pre");
+    codeBlocks.forEach((codeBlock) => {
+      const copyButton = document.createElement("button");
+      copyButton.className = "copy-button";
+      copyButton.addEventListener("click", () => {
+        const code = codeBlock.querySelector("code").textContent;
+        copyToClipboard(code, copyButton);
+      });
+      codeBlock.appendChild(copyButton);
+    });
+  }
+
+  function addCopyButtonToMessage(messageElement, message) {
+    const copyButton = document.createElement("button");
+    copyButton.className = "copy-button message-copy-button";
+    copyButton.addEventListener("click", () => {
+      copyToClipboard(message, copyButton);
+    });
+    messageElement.appendChild(copyButton);
+  }
+
+  function copyToClipboard(text, button) {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        const originalContent = button.innerHTML;
+        button.innerHTML = "Copied!";
+        button.style.width = "60px"; // Adjust as needed to fit "Copied!"
+        setTimeout(() => {
+          button.innerHTML = originalContent;
+          button.style.width = ""; // Reset to CSS default
+        }, 2000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy text: ", err);
+      });
   }
 
   // Replace the chrome.tabs.query calls with this function
@@ -704,7 +751,7 @@ document.addEventListener("DOMContentLoaded", () => {
     chatItem.innerHTML = `
       <div class="chat-item-header">
         <span class="chat-item-time">${timeAgo}</span>
-        <button class="delete-chat-button" title="Delete chat">🗑️</button>
+        <button class="delete-chat-button" title="Delete chat">[X]</button>
       </div>
       <div class="chat-item-domain" title="${domainText}">${domainText}</div>
       <div class="chat-item-message" title="${lastMessage}">${lastMessage.substring(0, 30)}${lastMessage.length > 30 ? "..." : ""}</div>
