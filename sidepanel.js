@@ -794,6 +794,23 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  // // Add this new event listener for keydown events
+  // document.addEventListener("keydown", (event) => {
+  //   if (event.key === "s" && (event.ctrlKey || event.metaKey)) {
+  //     event.preventDefault(); // Prevent the default save action
+  //     toggleSettings();
+  //   }
+  // });
+
+  // function toggleSettings() {
+  //   const settingsModal = document.getElementById("settings-modal");
+  //   if (settingsModal.style.display === "block") {
+  //     settingsModal.style.display = "none";
+  //   } else {
+  //     settingsModal.style.display = "block";
+  //   }
+  // }
+
   function setInputAsQuote(text) {
     if (text && text.trim()) {
       // Strip HTML tags and decode HTML entities
