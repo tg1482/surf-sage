@@ -1,7 +1,6 @@
 import { initializeSettings } from "./settings.js";
 import { models, defaults, defaultProvider } from "./config.js";
 
-// Move updateModelSelect outside of DOMContentLoaded
 function updateModelSelect(newProvider, newModel) {
   const modelSelect = document.getElementById("model-select");
   if (modelSelect) {
@@ -21,7 +20,6 @@ function updateModelSelect(newProvider, newModel) {
   }
 }
 
-// Move the message listener outside of DOMContentLoaded
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "closeSidebar") {
     window.close();
@@ -88,6 +86,48 @@ function initializeModelSelect() {
   });
 }
 
+// Add this near the top of the file, outside of any function
+let sidebarState = "open"; // Default state
+
+// Modify the toggleSidebar function
+function toggleSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const body = document.body;
+  const collapsedSidebar = document.getElementById("collapsed-sidebar");
+
+  sidebar.classList.toggle("collapsed");
+  body.classList.toggle("sidebar-collapsed");
+
+  if (body.classList.contains("sidebar-collapsed")) {
+    collapsedSidebar.style.display = "flex";
+    sidebarState = "collapsed";
+  } else {
+    collapsedSidebar.style.display = "none";
+    sidebarState = "open";
+  }
+
+  // Save the state to chrome.storage
+  chrome.storage.local.set({ sidebarState: sidebarState }, () => {
+    console.log("Sidebar state saved:", sidebarState);
+  });
+}
+
+// Add this listener near the top of the file, outside of any function
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "toggleSidebar") {
+    toggleSidebar();
+  }
+});
+
+// Add this function to restore the sidebar state
+function restoreSidebarState() {
+  chrome.storage.local.get(["sidebarState"], (result) => {
+    if (result.sidebarState === "collapsed") {
+      toggleSidebar();
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const chatMessages = document.getElementById("chat-messages");
   const userInput = document.getElementById("user-input");
@@ -100,20 +140,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const expandSidebarButton = document.getElementById("expand-sidebar-button");
   const newChatButtonCollapsed = document.getElementById("new-chat-button-collapsed");
 
-  function toggleSidebar() {
-    const sidebar = document.getElementById("sidebar");
-    const body = document.body;
-    const collapsedSidebar = document.getElementById("collapsed-sidebar");
-
-    sidebar.classList.toggle("collapsed");
-    body.classList.toggle("sidebar-collapsed");
-
-    if (body.classList.contains("sidebar-collapsed")) {
-      collapsedSidebar.style.display = "flex";
-    } else {
-      collapsedSidebar.style.display = "none";
-    }
+  const sidebarToggle = document.getElementById("sidebar-toggle");
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", toggleSidebar);
   }
+  initializeModelSelect();
+
+  // Call restoreSidebarState after initializing the UI elements
+  restoreSidebarState();
 
   minimizeButton.addEventListener("click", toggleSidebar);
   expandSidebarButton.addEventListener("click", toggleSidebar);
@@ -931,25 +965,5 @@ document.addEventListener("DOMContentLoaded", () => {
     } else if (message.action === "createNewChat") {
       createNewChat();
     }
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const sidebarToggle = document.getElementById("sidebar-toggle");
-    if (sidebarToggle) {
-      sidebarToggle.addEventListener("click", toggleSidebar);
-    }
-
-    const minimizeButton = document.getElementById("minimize-button");
-    const expandSidebarButton = document.getElementById("expand-sidebar-button");
-    const newChatButtonCollapsed = document.getElementById("new-chat-button-collapsed");
-
-    minimizeButton.addEventListener("click", toggleSidebar);
-    expandSidebarButton.addEventListener("click", toggleSidebar);
-    newChatButtonCollapsed.addEventListener("click", () => {
-      createNewChat();
-      toggleSidebar();
-    });
-
-    initializeModelSelect();
   });
 });
