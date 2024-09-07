@@ -62,6 +62,9 @@ function initializeModelSelect() {
       availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
     }
 
+    // Remove duplicates
+    availableModels = Array.from(new Set(availableModels.map(JSON.stringify))).map(JSON.parse);
+
     availableModels.forEach(({ provider, model }) => {
       const option = document.createElement("option");
       option.value = JSON.stringify({ provider, model });
@@ -939,15 +942,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Add an event listener for when the window is about to unload
   window.addEventListener("beforeunload", handlePanelClose);
-
-  initializeModelSelect();
-
-  // Add a listener for provider changes
-  chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === "local" && (changes.provider || changes.localModels)) {
-      initializeModelSelect();
-    }
-  });
 
   // Add this to your existing chrome.runtime.onMessage listener
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
