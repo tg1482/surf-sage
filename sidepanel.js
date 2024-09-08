@@ -831,23 +831,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // // Add this new event listener for keydown events
-  // document.addEventListener("keydown", (event) => {
-  //   if (event.key === "s" && (event.ctrlKey || event.metaKey)) {
-  //     event.preventDefault(); // Prevent the default save action
-  //     toggleSettings();
-  //   }
-  // });
-
-  // function toggleSettings() {
-  //   const settingsModal = document.getElementById("settings-modal");
-  //   if (settingsModal.style.display === "block") {
-  //     settingsModal.style.display = "none";
-  //   } else {
-  //     settingsModal.style.display = "block";
-  //   }
-  // }
-
   function setInputAsQuote(text) {
     if (text && text.trim()) {
       // Strip HTML tags and decode HTML entities
@@ -897,7 +880,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (response && response.selectedText) {
       handleSelectedText(response.selectedText);
     } else if (response && response.error) {
-      console.error("Error getting selected text:", response.error);
     }
   });
 
@@ -915,49 +897,6 @@ document.addEventListener("DOMContentLoaded", () => {
         createNewChat();
       }
       setInputAsQuote(event.data.text);
-    }
-  });
-
-  // Get selected text when the side panel is opened
-  chrome.runtime.sendMessage({ action: "getSelectedText" }, (response) => {
-    if (response && response.selectedText) {
-      handleSelectedText(response.selectedText);
-    } else if (response && response.error) {
-      console.error("Error getting selected text:", response.error);
-    }
-  });
-
-  // Request the current selected text when the panel opens
-  chrome.runtime.sendMessage({ action: "getCurrentSelectedText" }, (response) => {
-    if (response && response.selectedText) {
-      handleSelectedText(response.selectedText);
-    }
-  });
-
-  // Add this function to handle cleanup when the panel is closed
-  function handlePanelClose() {
-    // Perform any necessary cleanup here
-    // For example, you might want to save the current state or clear some data
-  }
-
-  // Add an event listener for when the window is about to unload
-  window.addEventListener("beforeunload", handlePanelClose);
-
-  // Add this to your existing chrome.runtime.onMessage listener
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "closeSidebar") {
-      window.close();
-    } else if (message.action === "updateInput") {
-      const userInput = document.getElementById("user-input");
-      if (userInput) {
-        userInput.innerHTML = message.text;
-      }
-    } else if (message.action === "modelChanged") {
-      updateModelSelect(message.provider, message.model);
-    } else if (message.action === "toggleSidebar") {
-      toggleSidebar();
-    } else if (message.action === "createNewChat") {
-      createNewChat();
     }
   });
 });
