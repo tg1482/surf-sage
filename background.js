@@ -251,9 +251,6 @@ async function handleAnthropicStream(messages, model, apiKey) {
 
   const { systemMessage, formattedMessages } = formatAnthropicMessages(messages);
 
-  console.log("systemMessage", systemMessage);
-  console.log("formattedMessages", formattedMessages);
-
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -269,8 +266,6 @@ async function handleAnthropicStream(messages, model, apiKey) {
       stream: true,
     }),
   });
-
-  console.log("response", response);
 
   if (!response.ok) {
     const errorData = await response.json();
