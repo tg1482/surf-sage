@@ -61,7 +61,6 @@ body.sidebar-collapsed {
   background-color: #00ff00;
   color: #000000;
   border: none;
-  cursor: pointer;
   font-size: 14px;
   display: flex;
   justify-content: center;
@@ -73,6 +72,7 @@ body.sidebar-collapsed {
 
 .icon-button:hover {
   background-color: #00cc00;
+  cursor: pointer;
 }
 
 #settings-button {
