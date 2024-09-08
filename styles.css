@@ -42,7 +42,7 @@ body.sidebar-collapsed {
   flex-grow: 1;
   margin-right: 10px;
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   background-color: #00ff00;
   color: #000000;
   border: none;
@@ -68,7 +68,6 @@ body.sidebar-collapsed {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 5px 0 10px;
   font-family: "VT323", "Courier New", monospace;
   font-weight: bold;
 }
@@ -222,7 +221,7 @@ body.sidebar-collapsed #chat-container {
 
 #model-select {
   flex: 0 1 auto;
-  max-width: 200px;
+  max-width: 250px;
   font-size: 12px;
   padding: 4px;
   border: 1px solid #00ff00;
@@ -600,7 +599,6 @@ body.sidebar-collapsed #chat-container {
   margin-left: 40px;
 }
 
-/* Add these new styles */
 .copy-button,
 .message-copy-button {
   position: absolute;
@@ -613,24 +611,43 @@ body.sidebar-collapsed #chat-container {
   font-size: 12px;
   cursor: pointer;
   font-family: "VT323", "Courier New", monospace;
-  transition: width 0.3s ease;
+  transition: all 0.3s ease;
   overflow: hidden;
-  width: 18px; /* Adjust as needed to fit "C" */
-  white-space: nowrap;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
 }
 
 .copy-button:hover,
 .message-copy-button:hover {
   background-color: #00cc00;
-  width: 45px; /* Adjust as needed to fit "Copy" */
+  width: 50px; /* Width when expanded */
 }
 
 .copy-button::before,
 .message-copy-button::before {
   content: "C";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .copy-button:hover::before,
 .message-copy-button:hover::before {
   content: "Copy";
+  position: static;
+  transform: none;
+}
+
+/* Style for when content is copied */
+.copy-button.copied,
+.message-copy-button.copied {
+  width: 70px;
+  background-color: #4caf50;
+}
+
+.copy-button.copied::before,
+.message-copy-button.copied::before {
+  content: "Copied!";
 }
