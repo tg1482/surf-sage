@@ -203,6 +203,7 @@ body.sidebar-collapsed #chat-container {
 
 .ai {
   align-self: flex-start;
+  min-width: 75px;
   background-color: #001933;
   color: #00ff00;
 }
@@ -221,7 +222,7 @@ body.sidebar-collapsed #chat-container {
 
 #model-select {
   flex: 0 1 auto;
-  max-width: 150px;
+  max-width: 200px;
   font-size: 12px;
   padding: 4px;
   border: 1px solid #00ff00;
