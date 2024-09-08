@@ -16,6 +16,8 @@ function initializeUI() {
   setupMessageListeners();
 }
 
+const { updateConfiguredModels, openSettings } = initializeSettings();
+
 function initializeEventListeners() {
   document.getElementById("send-button").addEventListener("click", sendMessage);
   document.getElementById("user-input").addEventListener("keydown", handleUserInputKeydown);
@@ -24,6 +26,8 @@ function initializeEventListeners() {
   document.getElementById("expand-sidebar-button").addEventListener("click", toggleSidebar);
   document.getElementById("new-chat-button-collapsed").addEventListener("click", handleNewChatCollapsed);
   document.getElementById("model-select").addEventListener("change", handleModelSelectChange);
+  document.getElementById("settings-button").addEventListener("click", openSettings);
+  document.getElementById("settings-button-collapsed").addEventListener("click", openSettings);
 }
 
 function initDatabase() {
@@ -46,7 +50,7 @@ function initDatabase() {
 
 async function sendMessage() {
   const userInput = document.getElementById("user-input");
-  const { updateConfiguredModels, openSettings } = initializeSettings();
+
   const modelsAvailable = await updateConfiguredModels();
   if (!modelsAvailable) {
     openSettings();

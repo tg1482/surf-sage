@@ -36,11 +36,11 @@ body.sidebar-collapsed {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 8px;
 }
 
 #new-chat-button {
   flex-grow: 1;
-  margin-right: 10px;
   width: 100%;
   padding: 8px;
   background-color: #00ff00;
@@ -55,9 +55,7 @@ body.sidebar-collapsed {
   background-color: #00cc00;
 }
 
-#minimize-button,
-#expand-sidebar-button,
-#new-chat-button-collapsed {
+.icon-button {
   width: 30px;
   height: 30px;
   background-color: #00ff00;
@@ -70,27 +68,16 @@ body.sidebar-collapsed {
   align-items: center;
   font-family: "VT323", "Courier New", monospace;
   font-weight: bold;
+  padding: 10px;
 }
 
-#minimize-button:hover,
-#expand-sidebar-button:hover,
-#new-chat-button-collapsed:hover {
+.icon-button:hover {
   background-color: #00cc00;
 }
 
 #settings-button {
-  margin-top: auto;
-  padding: 10px;
-  background-color: #00ff00;
-  color: #000000;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  text-align: left;
-  font-family: "VT323", "Courier New", monospace;
-  font-weight: bold;
+  font-size: 20px;
 }
-
 #chat-history {
   display: flex;
   flex-direction: column;
@@ -117,8 +104,7 @@ body.sidebar-collapsed {
 .chat-item-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
+  padding: 10px 5px;
 }
 
 .chat-item-time {
