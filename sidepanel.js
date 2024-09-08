@@ -11,12 +11,12 @@ function initializeUI() {
     .then(() => loadChatHistory())
     .then(() => loadMostRecentChat())
     .catch((error) => console.error("Error during initialization:", error));
-  initializeModelSelect();
+  initializeAndUpdateModelSelect();
   restoreSidebarState();
   setupMessageListeners();
 }
 
-const { updateConfiguredModels, openSettings } = initializeSettings();
+const { initializeAndUpdateModelSelect, openSettings } = initializeSettings();
 
 function initializeEventListeners() {
   document.getElementById("send-button").addEventListener("click", sendMessage);
@@ -51,7 +51,7 @@ function initDatabase() {
 async function sendMessage() {
   const userInput = document.getElementById("user-input");
 
-  const modelsAvailable = await updateConfiguredModels();
+  const modelsAvailable = await initializeAndUpdateModelSelect();
   if (!modelsAvailable) {
     openSettings();
     return;
@@ -744,66 +744,40 @@ function handleSelectedText(selectedText) {
     document.getElementById("user-input").focus();
   }
 }
-
-function initializeModelSelect() {
-  chrome.storage.local.get(["provider", "model", "openaiApiKey", "anthropicApiKey", "localUrl", "localModels"], (result) => {
-    const currentModel = result.model || defaults[result.provider || defaultProvider].model;
-    const localModels = result.localModels || models.local;
-
-    const modelSelect = document.getElementById("model-select");
-    modelSelect.innerHTML = "";
-
-    let availableModels = [];
-
-    if (result.openaiApiKey) {
-      availableModels = availableModels.concat(models.openai.map((model) => ({ provider: "openai", model })));
-    }
-
-    if (result.anthropicApiKey) {
-      availableModels = availableModels.concat(models.anthropic.map((model) => ({ provider: "anthropic", model })));
-    }
-
-    if (result.localUrl) {
-      availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
-    }
-
-    availableModels = Array.from(new Set(availableModels.map(JSON.stringify))).map(JSON.parse);
-
-    availableModels.forEach(({ provider, model }) => {
-      const option = document.createElement("option");
-      option.value = JSON.stringify({ provider, model });
-      option.textContent = `${provider}: ${model}`;
-      modelSelect.appendChild(option);
-    });
-
-    const currentModelOption = Array.from(modelSelect.options).find((option) => {
-      const { model } = JSON.parse(option.value);
-      return model === currentModel;
-    });
-
-    if (currentModelOption) {
-      modelSelect.value = currentModelOption.value;
-    }
-
-    console.log(
-      "Model select options:",
-      Array.from(modelSelect.options).map((opt) => opt.value)
-    );
-  });
-}
-
 function updateModelSelect(newProvider, newModel) {
   const modelSelect = document.getElementById("model-select");
   if (modelSelect) {
-    const options = Array.from(modelSelect.options);
-    const foundOption = options.find((option) => {
+    let optionExists = false;
+    Array.from(modelSelect.options).forEach((option) => {
       const { provider, model } = JSON.parse(option.value);
-      return provider === newProvider && model === newModel;
+      if (provider === newProvider && model === newModel) {
+        modelSelect.value = option.value;
+        optionExists = true;
+      }
     });
 
-    if (foundOption) {
-      modelSelect.value = foundOption.value;
+    if (!optionExists) {
+      // If the option doesn't exist, we should reinitialize the entire select
+      // as this likely means the available models have changed
+      initializeAndUpdateModelSelect().then(() => {
+        // After reinitializing, try to select the new model again
+        Array.from(modelSelect.options).forEach((option) => {
+          const { provider, model } = JSON.parse(option.value);
+          if (provider === newProvider && model === newModel) {
+            modelSelect.value = option.value;
+          }
+        });
+      });
     }
+
+    // Trigger change event
+    const event = new Event("change");
+    modelSelect.dispatchEvent(event);
+
+    // Update storage
+    chrome.storage.local.set({ provider: newProvider, model: newModel }, () => {
+      console.log(`Model updated to ${newProvider}: ${newModel}`);
+    });
   }
 }
 

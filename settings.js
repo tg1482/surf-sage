@@ -21,7 +21,7 @@ function initializeSettings() {
     settingsModelSelect.innerHTML = "";
     chrome.storage.local.get("localModels", (result) => {
       const availableModels = currentProvider === "local" ? result.localModels || models.local : models[currentProvider];
-      availableModels.forEach((model) => {
+      availableModels?.forEach((model) => {
         const option = document.createElement("option");
         option.value = model;
         option.textContent = model;
@@ -74,14 +74,15 @@ function initializeSettings() {
     });
   });
 
-  function updateConfiguredModels() {
-    const modelSelect = document.getElementById("model-select");
-    modelSelect.innerHTML = "";
+  function initializeAndUpdateModelSelect() {
     return new Promise((resolve) => {
       chrome.storage.local.get(["provider", "model", "openaiApiKey", "anthropicApiKey", "localUrl", "localModels"], (result) => {
         const currentProvider = result.provider || defaultProvider;
         const currentModel = result.model || defaults[currentProvider].model;
         const localModels = result.localModels || models.local;
+
+        const modelSelect = document.getElementById("model-select");
+        modelSelect.innerHTML = ""; // Clear existing options
 
         let availableModels = [];
 
@@ -94,6 +95,16 @@ function initializeSettings() {
         if (result.localUrl) {
           availableModels = availableModels.concat(localModels.map((model) => ({ provider: "local", model })));
         }
+
+        // Deduplication
+        availableModels = availableModels.reduce((acc, current) => {
+          const x = acc.find((item) => item.provider === current.provider && item.model === current.model);
+          if (!x) {
+            return acc.concat([current]);
+          } else {
+            return acc;
+          }
+        }, []);
 
         availableModels.forEach(({ provider, model }) => {
           const option = document.createElement("option");
@@ -111,6 +122,11 @@ function initializeSettings() {
         if (currentModelOption) {
           modelSelect.value = currentModelOption.value;
         }
+
+        console.log(
+          "Model select options:",
+          Array.from(modelSelect.options).map((opt) => opt.value)
+        );
 
         const modelsAvailable = modelSelect.options.length > 0;
         resolve(modelsAvailable);
@@ -161,7 +177,7 @@ function initializeSettings() {
         console.error("Error saving settings:", chrome.runtime.lastError);
       } else {
       }
-      updateConfiguredModels().then((modelsAvailable) => {
+      initializeAndUpdateModelSelect().then((modelsAvailable) => {
         if (!modelsAvailable) {
           openSettings();
         }
@@ -214,7 +230,7 @@ function initializeSettings() {
 
       localUrlInput.value = result.localUrl || defaults.local.localUrl;
 
-      updateConfiguredModels().then((modelsAvailable) => {
+      initializeAndUpdateModelSelect().then((modelsAvailable) => {
         if (!modelsAvailable) {
           openSettings();
         }
@@ -222,7 +238,7 @@ function initializeSettings() {
     }
   );
 
-  return { updateConfiguredModels, openSettings };
+  return { initializeAndUpdateModelSelect, openSettings };
 }
 
 export { initializeSettings };
