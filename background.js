@@ -128,10 +128,10 @@ chrome.runtime.onConnect.addListener(function (port) {
 
 async function sendToGPT(messages) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["provider", "model", "apiKey", "localUrl"], async function (result) {
+    chrome.storage.local.get(["provider", "model", "openaiApiKey", "anthropicApiKey", "localUrl"], async function (result) {
       const provider = result.provider || "openai";
       const model = result.model || "gpt-4o-mini";
-      const apiKey = result.apiKey;
+      const apiKey = provider === "anthropic" ? result.anthropicApiKey : result.openaiApiKey;
       const localUrl = result.localUrl;
 
       let streamHandler;
@@ -209,19 +209,73 @@ async function handleLocalStream(messages, model, _, localUrl) {
   }
 }
 
+function formatAnthropicMessages(messages) {
+  // Extract system message if present
+  const systemMessage = messages.find((msg) => msg.role === "system");
+  let userMessages = messages.filter((msg) => msg.role !== "system");
+
+  // Combine consecutive messages of the same role
+  let formattedMessages = [];
+  let currentMessage = { role: "", content: "" };
+
+  for (let i = 0; i < userMessages.length; i++) {
+    if (currentMessage.role === userMessages[i].role) {
+      currentMessage.content += "\n\n" + userMessages[i].content;
+    } else {
+      if (currentMessage.role) {
+        formattedMessages.push(currentMessage);
+      }
+      currentMessage = { ...userMessages[i] };
+    }
+  }
+
+  if (currentMessage.role) {
+    formattedMessages.push(currentMessage);
+  }
+
+  // ensure first message is user. drop if not.
+  if (formattedMessages[0].role !== "user") {
+    formattedMessages = formattedMessages.slice(1);
+  }
+
+  return { systemMessage, formattedMessages };
+}
+
 async function handleAnthropicStream(messages, model, apiKey) {
+  let modelName = model;
+  if (model == "claude-3.5-sonnet") {
+    modelName = "claude-3-5-sonnet-20240620";
+  } else if (model == "claude-3-opus") {
+    modelName = "claude-3-opus-20240229";
+  }
+
+  const { systemMessage, formattedMessages } = formatAnthropicMessages(messages);
+
+  console.log("systemMessage", systemMessage);
+  console.log("formattedMessages", formattedMessages);
+
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: model,
-      messages: messages,
+      model: modelName,
+      max_tokens: 4096,
+      system: systemMessage?.content,
+      messages: formattedMessages,
       stream: true,
     }),
   });
+
+  console.log("response", response);
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Anthropic API error: ${errorData.error.message}`);
+  }
 
   const reader = response.body.getReader();
   let fullResponse = "";
@@ -236,7 +290,7 @@ async function handleAnthropicStream(messages, model, apiKey) {
     for (const line of lines) {
       if (line.startsWith("data: ")) {
         const data = JSON.parse(line.slice(6));
-        if (data.delta && data.delta.text) {
+        if (data.type === "content_block_delta" && data.delta && data.delta.text) {
           fullResponse += data.delta.text;
           chrome.runtime.sendMessage({ action: "streamResponse", content: data.delta.text });
         }
