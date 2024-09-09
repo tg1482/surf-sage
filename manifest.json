@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Surf Sage",
   "version": "2.0",
-  "description": "Ask questions to GPT from your browser",
+  "description": "Surf Sage is a Chrome extension that integrates GPT-based AI models directly into your browsing experience.",
   "permissions": ["activeTab", "storage", "sidePanel", "tabs"],
   "host_permissions": ["https://api.openai.com/*", "https://api.anthropic.com/*"],
   "background": {
