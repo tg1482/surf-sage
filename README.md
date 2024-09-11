@@ -19,12 +19,6 @@ Surf Sage is a Chrome extension that integrates GPT-based AI models directly int
 - Markdown rendering for formatted AI responses
 - Code syntax highlighting and copy functionality
 
-## Installation
-
-1. Download the extension from the Chrome Web Store (link coming soon)
-2. Click "Add to Chrome" to install the extension
-3. Once installed, you'll see the Surf Sage icon in your Chrome toolbar
-
 ## Usage
 
 1. Click on the Surf Sage icon or use the keyboard shortcut (Ctrl+L) to open the side panel
